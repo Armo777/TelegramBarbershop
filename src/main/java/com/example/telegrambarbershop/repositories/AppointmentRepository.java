@@ -12,9 +12,15 @@ import java.util.List;
 public interface AppointmentRepository extends JpaRepository<Appointment, Integer> {
     List<Appointment> findAll();
 
-    List<Appointment> findByBarberAndAppointmentTimeAfter(Barber barber, LocalDateTime dateTime);
+    //List<Appointment> findByBarberAndAppointmentTimeAfter(Barber barber, LocalDateTime appointmentDateTime);
 
     List<Appointment> findByBarberIdOrderByAppointmentDateTime(Integer barberId);
 
     Appointment save(Appointment appointment);
+
+    List<Appointment> findByBarberAndAppointmentDateTimeAfter(Barber barber, LocalDateTime appointmentDateTime);
+
+    List<Appointment> findByBarberId(Long barberId);
+
+    //List<Appointment> findByAppointmentTimeBetween(LocalDateTime startTime, LocalDateTime endTime);
 }

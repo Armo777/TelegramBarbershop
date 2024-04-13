@@ -21,14 +21,23 @@ public class Appointment {
     @JoinColumn(name = "service_id", nullable = false)
     private Service service;
 
-    private LocalDateTime appointmentTime;
+    @Column(name = "nameUser_f", nullable = false)
+    private String nameUser;
 
-    public Appointment(Integer id, LocalDateTime appointmentDateTime, Barber barber, Service service, LocalDateTime appointmentTime) {
+    public Appointment(Integer id, LocalDateTime appointmentDateTime, Barber barber, Service service, String nameUser) {
         this.id = id;
         this.appointmentDateTime = appointmentDateTime;
         this.barber = barber;
         this.service = service;
-        this.appointmentTime = appointmentTime;
+        this.nameUser = nameUser;
+    }
+
+    public String getNameUser() {
+        return nameUser;
+    }
+
+    public void setNameUser(String nameUser) {
+        this.nameUser = nameUser;
     }
 
     public Appointment() {
