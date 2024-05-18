@@ -1,9 +1,11 @@
 package com.example.telegrambarbershop.entity;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 
+@Data
 @Entity
 public class Appointment {
     @Id
@@ -21,23 +23,23 @@ public class Appointment {
     @JoinColumn(name = "service_id", nullable = false)
     private Service service;
 
-    @Column(name = "nameUser_f", nullable = false)
-    private String nameUser;
+    @Column(name = "name_f", nullable = false)
+    private String name;
 
-    public Appointment(Integer id, LocalDateTime appointmentDateTime, Barber barber, Service service, String nameUser) {
+    public Appointment(Integer id, LocalDateTime appointmentDateTime, Barber barber, Service service, String name) {
         this.id = id;
         this.appointmentDateTime = appointmentDateTime;
         this.barber = barber;
         this.service = service;
-        this.nameUser = nameUser;
+        this.name = name;
     }
 
     public String getNameUser() {
-        return nameUser;
+        return name;
     }
 
-    public void setNameUser(String nameUser) {
-        this.nameUser = nameUser;
+    public void setName(String nameUser) {
+        this.name = nameUser;
     }
 
     public Appointment() {
@@ -74,5 +76,9 @@ public class Appointment {
 
     public void setService(Service service) {
         this.service = service;
+    }
+
+    public String getName() {
+        return name;
     }
 }

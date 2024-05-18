@@ -1,8 +1,11 @@
 package com.example.telegrambarbershop.entity;
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
+@Data
 @Entity
 public class Barber {
     @Id
@@ -20,6 +23,8 @@ public class Barber {
     @Column(name = "Rating_f", nullable = false)
     private Double Rating;
 
+    @OneToMany(mappedBy = "barber", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<BarberAdmin> barberAdmins;
 
     public Barber(String name, String phoneNumber, String email, String address) {
         this.name = name;

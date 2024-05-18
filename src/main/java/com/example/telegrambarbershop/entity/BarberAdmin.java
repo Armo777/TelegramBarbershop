@@ -1,7 +1,9 @@
 package com.example.telegrambarbershop.entity;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
+@Data
 @Entity
 public class BarberAdmin {
     @Id

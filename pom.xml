@@ -14,7 +14,7 @@
     <name>TelegramBarbershop</name>
     <description>TelegramBarbershop</description>
     <properties>
-        <java.version>11</java.version>
+        <java.version>17</java.version>
         <telegrambot.starter.version>5.0.1</telegrambot.starter.version>
     </properties>
     <dependencies>

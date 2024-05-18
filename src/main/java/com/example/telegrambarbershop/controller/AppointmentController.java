@@ -6,17 +6,19 @@ import com.example.telegrambarbershop.entity.Service;
 import com.example.telegrambarbershop.repositories.AppointmentRepository;
 import com.example.telegrambarbershop.repositories.BarberRepository;
 import com.example.telegrambarbershop.repositories.ServiceRepository;
+import com.example.telegrambarbershop.service.AppointmentService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 @RestController
@@ -30,26 +32,62 @@ public class AppointmentController {
 
     @Autowired
     private AppointmentRepository appointmentRepository;
+
+    @Autowired
+    private AppointmentService appointmentService;
     //@Autowired
     //private TelegramBotController telegramBotController;
     @GetMapping("/availableTimeSlots")
-    public List<String> getAvailableTimeSlots(
-            @RequestParam LocalDateTime date,
+    public Map<LocalDate, List<String>> getAvailableTimeSlots(
             @RequestParam int barberId,
             @RequestParam int serviceId) {
 
         Barber barber = barberRepository.findById(barberId).orElse(null);
         Service service = serviceRepository.findById(serviceId).orElse(null);
-
         if (barber == null || service == null) {
-            return new ArrayList<>();
+            return new HashMap<>();
         }
 
-        LocalDateTime tomorrow = LocalDateTime.now().plusDays(1);
-        LocalDateTime startTime = LocalDateTime.of(tomorrow.toLocalDate(), LocalTime.of(9, 0));
-        LocalDateTime endTime = LocalDateTime.of(tomorrow.toLocalDate(), LocalTime.of(18, 0));
+        LocalDateTime startDate = LocalDateTime.now().plusDays(1); // Start from tomorrow
+        LocalDateTime endDate = startDate.plusMonths(1); // Until one month from tomorrow
+        List<Appointment> appointments = appointmentRepository.findByBarberId(barberId);
+        Map<LocalDate, List<String>> availableTimeSlotsMap = new HashMap<>();
 
-        List<Appointment> appointments = appointmentRepository.findAll();
+        for (LocalDateTime currentDate = startDate; currentDate.isBefore(endDate); currentDate = currentDate.plusDays(1)) {
+            LocalDateTime startTime = LocalDateTime.of(currentDate.toLocalDate(), LocalTime.of(9, 0));
+            LocalDateTime endTime = LocalDateTime.of(currentDate.toLocalDate(), LocalTime.of(18, 0));
+            List<String> availableTimeSlots = new ArrayList<>();
+            LocalDateTime currentSlot = startTime;
+
+            while (currentSlot.isBefore(endTime)) {
+                boolean isSlotAvailable = true;
+
+                for (Appointment appointment : appointments) {
+                    if (currentSlot.equals(appointment.getAppointmentDateTime()) ||
+                            (currentSlot.isAfter(appointment.getAppointmentDateTime().minusHours(1)) &&
+                                    currentSlot.isBefore(appointment.getAppointmentDateTime().plusHours(1)))) {
+                        isSlotAvailable = false;
+                        break;
+                    }
+                }
+
+                if (isSlotAvailable) {
+                    availableTimeSlots.add(formatDateTime(currentSlot));
+                }
+
+                currentSlot = currentSlot.plusHours(1);
+            }
+
+            availableTimeSlotsMap.put(currentDate.toLocalDate(), availableTimeSlots);
+        }
+        return availableTimeSlotsMap;
+    }
+
+    public List<String> getAvailableTimeSlotsForDay(int barberId, LocalDate date) {
+        LocalDateTime startTime = LocalDateTime.of(date, LocalTime.of(9, 0));
+        LocalDateTime endTime = LocalDateTime.of(date, LocalTime.of(18, 0));
+
+        List<Appointment> appointments = appointmentRepository.findByBarberIdAndAppointmentDateTimeBetween((long) barberId, startTime, endTime);
 
         List<String> availableTimeSlots = new ArrayList<>();
         LocalDateTime currentSlot = startTime;
@@ -72,19 +110,19 @@ public class AppointmentController {
         return availableTimeSlots;
     }
 
-    private String formatDateTime(LocalDateTime dateTime) {
-        int year = dateTime.getYear();
-        int month = dateTime.getMonthValue();
-        int day = dateTime.getDayOfMonth();
-        int hour = dateTime.getHour();
-        int minute = dateTime.getMinute();
+    private List<Appointment> getAppointmentsForDay(Long barberId, LocalDate day) {
+        LocalDateTime startOfDay = day.atStartOfDay();
+        LocalDateTime endOfDay = day.atTime(LocalTime.MAX);
+        return appointmentRepository.findByBarberIdAndAppointmentDateTimeBetween(barberId, startOfDay, endOfDay);
+    }
 
-        String formattedDateTime = String.format("%04d-%02d-%02d %02d:%02d", year, month, day, hour, minute);
-        return formattedDateTime;
+    private String formatDateTime(LocalDateTime dateTime) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        return dateTime.format(formatter);
     }
 
     // Метод для создания записи на прием
-    public boolean createAppointment(LocalDateTime appointmentDateTime, Integer barberId, Integer serviceId, String nameUser) {
+    public boolean createAppointment(LocalDateTime appointmentDateTime, Integer barberId, Integer serviceId, String name) {
         // Получаем информацию о барбере и услуге
         Barber barber = barberRepository.findById(barberId).orElse(null);
         Service service = serviceRepository.findById(serviceId).orElse(null);
@@ -99,7 +137,7 @@ public class AppointmentController {
         appointment.setAppointmentDateTime(appointmentDateTime);
         appointment.setBarber(barber);
         appointment.setService(service);
-        appointment.setNameUser(nameUser);
+        appointment.setName(name);
 
         // Сохраняем запись в репозитории
         appointmentRepository.save(appointment);

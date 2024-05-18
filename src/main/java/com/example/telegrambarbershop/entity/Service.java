@@ -1,9 +1,11 @@
 package com.example.telegrambarbershop.entity;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.math.BigDecimal;
 
+@Data
 @Entity
 public class Service {
     @Id
