@@ -24,10 +24,12 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.bots.AbsSender;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -55,6 +57,18 @@ public class TelegramBotController extends TelegramLongPollingBot {
     @Autowired
     private AppointmentService appointmentService;
 
+    @Autowired
+    private AdminController adminController;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private MainAdminRepository mainAdminRepository;
+
+//    @Autowired
+//    private MainAdmin mainAdmin;
+
     private final AbsSender bot;
 
     private BarberService barberService;
@@ -77,6 +91,7 @@ public class TelegramBotController extends TelegramLongPollingBot {
         listofCommands.add(new BotCommand("/help", "информация о том, как использовать этого бота"));
         listofCommands.add(new BotCommand("/bookappointment", "Записаться на прием"));
         listofCommands.add(new BotCommand("/adminlogin", "войти в административную панель"));
+        listofCommands.add(new BotCommand("/mainadmin", "войти в главную административную панель"));
         try {
             this.execute(new SetMyCommands(listofCommands, new BotCommandScopeDefault(), null));
         }
@@ -102,43 +117,40 @@ public class TelegramBotController extends TelegramLongPollingBot {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
+            registerUser(chatId);  // Регистрация пользователя при получении сообщения
+
             if (messageText != null) {
-                switch (messageText) {
-                    case "/start":
-                        startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
-                        break;
-                    case "/help":
-                        sendMessage(chatId, HELP_TEXT);
-                        break;
-                    case "/bookappointment":
-                        showBarbers(chatId);
-                        break;
-                    case "/adminlogin":
-                        adminLogin(chatId);
-                        break;
-                    default:
-                        if (messageText.startsWith("/")) {
-                            sendMessage(chatId, "Извините, такой команды нет");
-                        } else {
-                            if (messageText.contains("_")) {
-                                handleAdminCredentials(chatId, messageText);
+                if (messageText.contains("_")) {
+                    handleMainAdminInput(chatId, messageText);
+                } else {
+                    switch (messageText) {
+                        case "/start":
+                            startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
+                            break;
+                        case "/help":
+                            sendMessage(chatId, HELP_TEXT);
+                            break;
+                        case "/bookappointment":
+                            showBarbers(chatId);
+                            break;
+                        case "/adminlogin":
+                            adminLogin(chatId);
+                            break;
+                        case "/mainadmin":
+                            mainAdminLogin(chatId);
+                            break;
+                        default:
+                            if (isMainAdmin(chatId)) {
+                                adminController.handleAdminCommands(chatId, messageText);
+                            } else if (messageText.startsWith("/")) {
+                                sendMessage(chatId, "Извините, такой команды нет.");
                             } else {
-                                sendMessage(chatId, "Извините, такой команды нет");
+                                sendMessage(chatId, "Извините, такой команды нет.");
                             }
-                        }
-                        break;
+                            break;
+                    }
                 }
-            } else if (update.hasCallbackQuery()) {
-                String callbackData = update.getCallbackQuery().getData();
-                long messageId = update.getCallbackQuery().getMessage().getMessageId();
-                chatId = update.getCallbackQuery().getMessage().getChatId();
-
-                handleCallbackQuery(update.getCallbackQuery(), callbackData, chatId, messageId);
-
-            } else {
-                log.error("Получен пустой текст сообщения.");
             }
-
         } else if (update.hasCallbackQuery()) {
             String callbackData = update.getCallbackQuery().getData();
             long messageId = update.getCallbackQuery().getMessage().getMessageId();
@@ -146,6 +158,191 @@ public class TelegramBotController extends TelegramLongPollingBot {
             handleCallbackQuery(update.getCallbackQuery(), callbackData, chatId, messageId);
         }
     }
+
+    public void handleMainAdminInput(long chatId, String messageText) {
+        String[] parts = messageText.split("_");
+
+        if (parts.length == 2 && isMainAdminCredentials(parts[0], parts[1])) {
+            sendMessage(chatId, "Добро пожаловать, главный администратор!");
+            setMainAdmin(chatId);
+            showAdminOptions(chatId);
+        } else if (isMainAdmin(chatId)) {
+            if (messageText.startsWith("/addBarber")) {
+                sendMessage(chatId, "Введите данные барбера в формате: Имя_НомерТелефона_Специальность_Рейтинг");
+            } else if (messageText.startsWith("/editBarber")) {
+                sendMessage(chatId, "Введите данные для редактирования барбера в формате: ID_Имя_НомерТелефона_Специальность_Рейтинг");
+            } else if (messageText.startsWith("/deleteBarber")) {
+                sendMessage(chatId, "Введите ID барбера для удаления");
+            } else if (messageText.startsWith("/addService")) {
+                sendMessage(chatId, "Введите данные услуги в формате: Название_Цена");
+            } else if (messageText.startsWith("/editService")) {
+                sendMessage(chatId, "Введите данные для редактирования услуги в формате: ID_Название_Цена");
+            } else if (messageText.startsWith("/deleteService")) {
+                sendMessage(chatId, "Введите ID услуги для удаления");
+            } else if (messageText.startsWith("/setWorkingDays")) {
+                sendMessage(chatId, "Введите рабочие дни в формате: YYYY-MM-DD,YYYY-MM-DD,...");
+            } else if (messageText.startsWith("/postAnnouncement")) {
+                sendMessage(chatId, "Введите текст объявления");
+            } else if (messageText.startsWith("/postPhoto")) {
+                sendMessage(chatId, "Введите описание и URL фото в формате: Описание_URL");
+            } else if (messageText.startsWith("/postVoice")) {
+                sendMessage(chatId, "Введите URL голосового сообщения");
+            } else {
+                processAdminAction(chatId, messageText);
+            }
+        } else {
+            sendMessage(chatId, "Ошибка аутентификации. Пожалуйста, проверьте логин и пароль и попробуйте снова.");
+        }
+    }
+
+    private void processAdminAction(long chatId, String messageText) {
+        String[] parts = messageText.split("_");
+
+        if (parts.length == 4 && !messageText.startsWith("/")) {
+            try {
+                String name = parts[0];
+                String phoneNumber = parts[1];
+                String specialty = parts[2];
+                double rating = Double.parseDouble(parts[3]);
+                adminController.addBarber(name, phoneNumber, specialty, rating);
+                sendMessage(chatId, "Барбер успешно добавлен.");
+            } catch (NumberFormatException e) {
+                sendMessage(chatId, "Неверный формат рейтинга.");
+            }
+        } else if (parts.length == 2 && !messageText.startsWith("/")) {
+            try {
+                String serviceName = parts[0];
+                BigDecimal price = new BigDecimal(parts[1]);
+                adminController.addService(serviceName, price);
+                sendMessage(chatId, "Услуга успешно добавлена.");
+            } catch (NumberFormatException e) {
+                sendMessage(chatId, "Неверный формат цены.");
+            }
+        } else if (parts.length == 5 && !messageText.startsWith("/")) {
+            try {
+                int id = Integer.parseInt(parts[0]);
+                String name = parts[1];
+                String phoneNumber = parts[2];
+                String specialty = parts[3];
+                double rating = Double.parseDouble(parts[4]);
+                adminController.editBarber(id, name, phoneNumber, specialty, rating);
+                sendMessage(chatId, "Барбер успешно обновлен.");
+            } catch (NumberFormatException e) {
+                sendMessage(chatId, "Неверный формат ID или рейтинга.");
+            }
+        } else if (parts.length == 3 && !messageText.startsWith("/")) {
+            try {
+                int id = Integer.parseInt(parts[0]);
+                String serviceName = parts[1];
+                BigDecimal price = new BigDecimal(parts[2]);
+                adminController.editService(id, serviceName, price);
+                sendMessage(chatId, "Услуга успешно обновлена.");
+            } catch (NumberFormatException e) {
+                sendMessage(chatId, "Неверный формат ID или цены.");
+            }
+        } else if (parts.length == 1 && messageText.matches("\\d+")) {
+            try {
+                int id = Integer.parseInt(parts[0]);
+                if (messageText.startsWith("/deleteBarber")) {
+                    adminController.deleteBarber(id);
+                    sendMessage(chatId, "Барбер успешно удален.");
+                } else if (messageText.startsWith("/deleteService")) {
+                    adminController.deleteService(id);
+                    sendMessage(chatId, "Услуга успешно удалена.");
+                }
+            } catch (NumberFormatException e) {
+                sendMessage(chatId, "Неверный формат ID.");
+            }
+        } else {
+            sendMessage(chatId, "Неверный формат ввода.");
+        }
+    }
+
+    private void setMainAdmin(long chatId) {
+        User user = userRepository.findByChatId(chatId);
+        if (user != null) {
+            user.setAdmin(true);
+            userRepository.save(user);
+        }
+    }
+
+    private void showAdminOptions(long chatId) {
+        List<String> adminOptions = Arrays.asList("/addBarber", "/editBarber", "/deleteBarber", "/addService", "/editService", "/deleteService", "/setWorkingDays", "/postAnnouncement", "/postPhoto", "/postVoice");
+        StringBuilder options = new StringBuilder("Выберите команду администратора:\n");
+        for (String option : adminOptions) {
+            options.append(option).append("\n");
+        }
+        sendMessage(chatId, options.toString());
+    }
+
+    private void mainAdminCommands(long chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText("Добро пожаловать, главный администратор!");
+
+        // Добавление кнопок команд для главного администратора
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        KeyboardRow row1 = new KeyboardRow();
+        row1.add("/addBarber");
+        row1.add("/editBarber");
+        row1.add("/deleteBarber");
+
+        KeyboardRow row2 = new KeyboardRow();
+        row2.add("/addService");
+        row2.add("/editService");
+        row2.add("/deleteService");
+
+        KeyboardRow row3 = new KeyboardRow();
+        row3.add("/setWorkingDays");
+        row3.add("/postAnnouncement");
+        row3.add("/postPhoto");
+        row3.add("/postVoice");
+
+        keyboard.add(row1);
+        keyboard.add(row2);
+        keyboard.add(row3);
+        keyboardMarkup.setKeyboard(keyboard);
+
+        message.setReplyMarkup(keyboardMarkup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleUserCommands(Update update) {
+        String messageText = update.getMessage().getText();
+        long chatId = update.getMessage().getChatId();
+
+        // Пример обработки команды пользователя
+        if (messageText.equals("/start")) {
+            registerUser(chatId);
+            sendMessage(chatId, "Добро пожаловать! Чем я могу помочь?");
+        } else {
+            sendMessage(chatId, "Неизвестная команда.");
+        }
+    }
+
+    private void registerUser(long chatId) {
+        User user = userRepository.findByChatId(chatId);
+        if (user == null) {
+            user = new User();
+            user.setChatId(chatId);
+            user.setAdmin(false);  // По умолчанию не администратор
+            userRepository.save(user);
+        }
+    }
+
+    private boolean isAdmin(long chatId) {
+        User user = userRepository.findByChatId(chatId);
+        return user != null && user.isAdmin();
+    }
+
+
 
     public void handleUpdate(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
@@ -197,7 +394,7 @@ public class TelegramBotController extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMessage(Long chatId, String text) {
+    public void sendMessage(Long chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
         message.setText(text);
@@ -211,7 +408,6 @@ public class TelegramBotController extends TelegramLongPollingBot {
     public void handleCallbackQuery(CallbackQuery callbackQuery, String data, long chatId, long messageId) {
         String callbackData = callbackQuery.getData();
         if (callbackData.startsWith("barber")) {
-            // Обрабатываем выбор барбера
             String[] dataParts = callbackData.split("_");
             if (dataParts.length != 2) {
                 sendMessage(chatId, "Ошибка обработки данных барбера.");
@@ -220,7 +416,6 @@ public class TelegramBotController extends TelegramLongPollingBot {
             Integer barberId = Integer.parseInt(dataParts[1]);
             showServices(chatId, barberId);
         } else if (callbackData.startsWith("service")) {
-            // Обрабатываем выбор услуги
             String[] dataParts = callbackData.split("_");
             if (dataParts.length != 3) {
                 sendMessage(chatId, "Ошибка обработки данных услуги.");
@@ -228,9 +423,18 @@ public class TelegramBotController extends TelegramLongPollingBot {
             }
             Integer serviceId = Integer.parseInt(dataParts[1]);
             Integer barberId = Integer.parseInt(dataParts[2]);
-            showAvailableTimeSlots(chatId, LocalDateTime.now(), barberId, serviceId);
+            showAvailableDays(chatId, barberId, serviceId);
+        } else if (callbackData.startsWith("day")) {
+            String[] dataParts = callbackData.split("_");
+            if (dataParts.length != 4) {
+                sendMessage(chatId, "Ошибка обработки данных дня.");
+                return;
+            }
+            LocalDate date = LocalDate.parse(dataParts[1]);
+            Integer barberId = Integer.parseInt(dataParts[2]);
+            Integer serviceId = Integer.parseInt(dataParts[3]);
+            showAvailableTimeSlots(chatId, date, barberId, serviceId);
         } else if (callbackData.startsWith("slot")) {
-            // Обрабатываем выбор временного слота
             String[] dataParts = callbackData.split("_");
             if (dataParts.length != 4) {
                 sendMessage(chatId, "Ошибка обработки данных временного слота.");
@@ -239,19 +443,32 @@ public class TelegramBotController extends TelegramLongPollingBot {
             String slot = dataParts[1];
             Integer barberId = Integer.parseInt(dataParts[2]);
             Integer serviceId = Integer.parseInt(dataParts[3]);
-            // Преобразуем строку слота в LocalDateTime
             LocalDateTime slotDateTime = LocalDateTime.parse(slot, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-            // Создаем запись на прием
             appointmentController.createAppointment(slotDateTime, barberId, serviceId, callbackQuery.getFrom().getFirstName());
-            // Отправляем пользователю сообщение о успешном создании записи
             registrationRecord(chatId, callbackQuery.getFrom().getFirstName());
+        } else if (callbackData.startsWith("back_barber")) {
+            showBarbers(chatId);
+        } else if (callbackData.startsWith("back_service")) {
+            String[] dataParts = callbackData.split("_");
+            if (dataParts.length != 3) {
+                sendMessage(chatId, "Ошибка обработки данных для кнопки 'Назад' на этапе выбора услуги.");
+                return;
+            }
+            Integer barberId = Integer.parseInt(dataParts[2]);
+            showServices(chatId, barberId);
+        } else if (callbackData.startsWith("back_day")) {
+            String[] dataParts = callbackData.split("_");
+            if (dataParts.length != 4) {
+                sendMessage(chatId, "Ошибка обработки данных для кнопки 'Назад' на этапе выбора дня.");
+                return;
+            }
+            Integer barberId = Integer.parseInt(dataParts[2]);
+            Integer serviceId = Integer.parseInt(dataParts[3]);
+            showAvailableDays(chatId, barberId, serviceId);
         } else {
-            // Некорректный callbackData
             sendMessage(chatId, "Некорректный выбор.");
         }
     }
-
-
 
 //    public void createOrUpdateAppointment(LocalDateTime appointmentDateTime, Barber barber, Service service, String userName) {
 //        Appointment existingAppointment = appointmentRepository.findByBarberAndAppointmentDateTime(barber, appointmentDateTime);
@@ -273,60 +490,62 @@ public class TelegramBotController extends TelegramLongPollingBot {
 //    }
 
 
-    private void handleUserCallback(Update update, String callbackData) {
-        String[] dataParts = callbackData.split("_");
-        String choiceType = dataParts[0];
+//    private void handleUserCallback(Update update, String callbackData) {
+//        String[] dataParts = callbackData.split("_");
+//        String choiceType = dataParts[0];
+//
+//        if (choiceType.equals("barber")) {
+//            // Пользователь выбрал барбера, показываем список услуг
+//            Integer barberId = Integer.parseInt(dataParts[1]);
+//            showServices(update.getCallbackQuery().getMessage().getChatId(), barberId);
+//        } else if (choiceType.equals("service")) {
+//            // Пользователь выбрал услугу, показываем доступные временные слоты
+//            Integer serviceId = Integer.parseInt(dataParts[1]);
+//            showAvailableTimeSlots(update.getCallbackQuery().getMessage().getChatId(), LocalDateTime.now(), 1, serviceId);
+//        } else if (choiceType.equals("slot")) {
+//            // Пользователь выбрал временной слот, создаем запись
+//            String dataTime = dataParts[1];
+//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd' 'HH:mm");
+//            LocalDateTime dateTimeFormat = LocalDateTime.parse(dataTime, formatter);
+//            appointmentController.createAppointment(dateTimeFormat, Integer.parseInt(dataParts[2]), 1, update.getCallbackQuery().getFrom().getFirstName());
+//            registrationRecord(update.getCallbackQuery().getMessage().getChatId(), update.getCallbackQuery().getFrom().getFirstName());
+//        }
+//    }
 
-        if (choiceType.equals("barber")) {
-            // Пользователь выбрал барбера, показываем список услуг
-            Integer barberId = Integer.parseInt(dataParts[1]);
-            showServices(update.getCallbackQuery().getMessage().getChatId(), barberId);
-        } else if (choiceType.equals("service")) {
-            // Пользователь выбрал услугу, показываем доступные временные слоты
-            Integer serviceId = Integer.parseInt(dataParts[1]);
-            showAvailableTimeSlots(update.getCallbackQuery().getMessage().getChatId(), LocalDateTime.now(), 1, serviceId);
-        } else if (choiceType.equals("slot")) {
-            // Пользователь выбрал временной слот, создаем запись
-            String dataTime = dataParts[1];
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd' 'HH:mm");
-            LocalDateTime dateTimeFormat = LocalDateTime.parse(dataTime, formatter);
-            appointmentController.createAppointment(dateTimeFormat, Integer.parseInt(dataParts[2]), 1, update.getCallbackQuery().getFrom().getFirstName());
-            registrationRecord(update.getCallbackQuery().getMessage().getChatId(), update.getCallbackQuery().getFrom().getFirstName());
-        }
-    }
-
-    private void showAvailableTimeSlots(long chatId, LocalDateTime date, Integer barberId, Integer serviceId) {
+    private void showAvailableTimeSlots(long chatId, LocalDate date, Integer barberId, Integer serviceId) {
         Map<LocalDate, List<String>> availableTimeSlotsMap = appointmentController.getAvailableTimeSlots(barberId, serviceId);
 
-        if (availableTimeSlotsMap.isEmpty()) {
-            sendMessage(chatId, "Нет доступных слотов для записи.");
-            return;
-        }
-
-        InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
-
-        for (Map.Entry<LocalDate, List<String>> entry : availableTimeSlotsMap.entrySet()) {
-            LocalDate localDate = entry.getKey();
-            List<String> availableTimeSlots = entry.getValue();
-
+        List<String> availableTimeSlots = availableTimeSlotsMap.getOrDefault(date, new ArrayList<>());
+        if (availableTimeSlots.isEmpty()) {
+            sendMessage(chatId, "На выбранную дату нет доступных слотов для записи.");
+        } else {
+            InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
             for (String slot : availableTimeSlots) {
                 List<InlineKeyboardButton> rowInline = new ArrayList<>();
                 InlineKeyboardButton button = new InlineKeyboardButton();
-                button.setText(localDate.toString() + " " + slot);
-                button.setCallbackData("slot_" + localDate + " " + slot + "_" + barberId + "_" + serviceId);
+                button.setText(slot);
+                button.setCallbackData("slot_" + slot + "_" + barberId + "_" + serviceId);
                 rowInline.add(button);
                 rowsInline.add(rowInline);
             }
-        }
 
-        markupInline.setKeyboard(rowsInline);
-        SendMessage message = new SendMessage(String.valueOf(chatId), "Выберите удобное время для записи:");
-        message.setReplyMarkup(markupInline);
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Произошла ошибка: " + e.getMessage());
+            // Добавляем кнопку "Назад"
+            List<InlineKeyboardButton> backButtonRow = new ArrayList<>();
+            InlineKeyboardButton backButton = new InlineKeyboardButton();
+            backButton.setText("Назад");
+            backButton.setCallbackData("back_day_" + barberId + "_" + serviceId);
+            backButtonRow.add(backButton);
+            rowsInline.add(backButtonRow);
+
+            markupInline.setKeyboard(rowsInline);
+            SendMessage message = new SendMessage(String.valueOf(chatId), "Выберите удобное время для записи:");
+            message.setReplyMarkup(markupInline);
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                log.error("Произошла ошибка: " + e.getMessage());
+            }
         }
     }
 
@@ -385,14 +604,7 @@ public class TelegramBotController extends TelegramLongPollingBot {
     }
 
     private void showServices(long chatId, Integer barberId) {
-        Barber barber = barberRepository.findById(barberId).orElse(null);
-        if (barber == null) {
-            log.error("Барбер с ID " + barberId + " не найден");
-            return;
-        }
-
         List<Service> services = serviceRepository.findAll();
-
         InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
 
@@ -405,10 +617,49 @@ public class TelegramBotController extends TelegramLongPollingBot {
             rowsInline.add(rowInline);
         }
 
+        // Добавляем кнопку "Назад"
+        List<InlineKeyboardButton> backButtonRow = new ArrayList<>();
+        InlineKeyboardButton backButton = new InlineKeyboardButton();
+        backButton.setText("Назад");
+        backButton.setCallbackData("back_barber");
+        backButtonRow.add(backButton);
+        rowsInline.add(backButtonRow);
+
         markupInline.setKeyboard(rowsInline);
         SendMessage message = new SendMessage(String.valueOf(chatId), "Выберите услугу:");
         message.setReplyMarkup(markupInline);
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Произошла ошибка: " + e.getMessage());
+        }
+    }
 
+    private void showAvailableDays(long chatId, Integer barberId, Integer serviceId) {
+        InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+        for (int i = 0; i < 30; i++) {
+            LocalDate day = LocalDate.now().plusDays(i);
+            List<InlineKeyboardButton> rowInline = new ArrayList<>();
+            InlineKeyboardButton button = new InlineKeyboardButton();
+            button.setText(day.toString());
+            button.setCallbackData("day_" + day.toString() + "_" + barberId + "_" + serviceId);
+            rowInline.add(button);
+            rowsInline.add(rowInline);
+        }
+
+        // Добавляем кнопку "Назад"
+        List<InlineKeyboardButton> backButtonRow = new ArrayList<>();
+        InlineKeyboardButton backButton = new InlineKeyboardButton();
+        backButton.setText("Назад");
+        backButton.setCallbackData("back_service_" + barberId);
+        backButtonRow.add(backButton);
+        rowsInline.add(backButtonRow);
+
+        markupInline.setKeyboard(rowsInline);
+        SendMessage message = new SendMessage(String.valueOf(chatId), "Выберите день:");
+        message.setReplyMarkup(markupInline);
         try {
             execute(message);
         } catch (TelegramApiException e) {
@@ -418,29 +669,21 @@ public class TelegramBotController extends TelegramLongPollingBot {
 
     private void showBarbers(long chatId) {
         List<Barber> barbers = barberRepository.findAll();
-        if (barbers.isEmpty()) {
-            sendMessage(chatId, "Барберы не найдены.");
-            return;
-        }
-
-        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
+        InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
 
         for (Barber barber : barbers) {
+            List<InlineKeyboardButton> rowInline = new ArrayList<>();
             InlineKeyboardButton button = new InlineKeyboardButton();
             button.setText(barber.getName());
             button.setCallbackData("barber_" + barber.getId());
-            List<InlineKeyboardButton> keyboardButtonsRow = new ArrayList<>();
-            keyboardButtonsRow.add(button);
-            rowList.add(keyboardButtonsRow);
+            rowInline.add(button);
+            rowsInline.add(rowInline);
         }
 
-        inlineKeyboardMarkup.setKeyboard(rowList);
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
-        message.setText("Выберите барбера:");
-        message.setReplyMarkup(inlineKeyboardMarkup);
-
+        markupInline.setKeyboard(rowsInline);
+        SendMessage message = new SendMessage(String.valueOf(chatId), "Выберите барбера:");
+        message.setReplyMarkup(markupInline);
         try {
             execute(message);
         } catch (TelegramApiException e) {
@@ -555,6 +798,46 @@ public class TelegramBotController extends TelegramLongPollingBot {
             log.error("Произошла ошибка: " + e.getMessage());
         }
     }
+
+    private void mainAdminLogin(long chatId) {
+        String messageText = "Пожалуйста, введите логин и пароль главного администратора в формате: логин_пароль";
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText(messageText);
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void mainHandleAdminCredentials(long chatId, String credentials) {
+        String[] parts = credentials.split("_");
+        if (parts.length == 2) {
+            String login = parts[0];
+            String password = parts[1];
+            MainAdmin mainAdmin = mainAdminRepository.findByUsername(login);
+            if (mainAdmin != null && mainAdmin.getPassword().equals(password)) {
+                sendMessage(chatId, "Вы успешно вошли в систему как главный администратор.");
+                // Логика для отображения главной административной панели
+            } else {
+                sendMessage(chatId, "Неверный логин или пароль.");
+            }
+        } else {
+            sendMessage(chatId, "Неверный формат. Пожалуйста, введите логин и пароль в формате: логин_пароль");
+        }
+    }
+
+    private boolean isMainAdminCredentials(String username, String password) {
+        MainAdmin mainAdmin = mainAdminRepository.findByUsername(username);
+        return mainAdmin != null && mainAdmin.getPassword().equals(password);
+    }
+
+    private boolean isMainAdmin(long chatId) {
+        User user = userRepository.findByChatId(chatId);
+        return user != null && user.isAdmin();
+    }
+
 
     public List<Appointment> getAppointmentsForBarber(int barberId) {
         return appointmentRepository.findByBarberId(barberId);

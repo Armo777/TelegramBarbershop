@@ -41,21 +41,20 @@ public class AppointmentController {
     public Map<LocalDate, List<String>> getAvailableTimeSlots(
             @RequestParam int barberId,
             @RequestParam int serviceId) {
-
         Barber barber = barberRepository.findById(barberId).orElse(null);
         Service service = serviceRepository.findById(serviceId).orElse(null);
         if (barber == null || service == null) {
             return new HashMap<>();
         }
 
-        LocalDateTime startDate = LocalDateTime.now().plusDays(1); // Start from tomorrow
-        LocalDateTime endDate = startDate.plusMonths(1); // Until one month from tomorrow
+        LocalDate startDate = LocalDate.now().plusDays(1); // Start from tomorrow
+        LocalDate endDate = startDate.plusMonths(1); // Until one month from tomorrow
         List<Appointment> appointments = appointmentRepository.findByBarberId(barberId);
         Map<LocalDate, List<String>> availableTimeSlotsMap = new HashMap<>();
 
-        for (LocalDateTime currentDate = startDate; currentDate.isBefore(endDate); currentDate = currentDate.plusDays(1)) {
-            LocalDateTime startTime = LocalDateTime.of(currentDate.toLocalDate(), LocalTime.of(9, 0));
-            LocalDateTime endTime = LocalDateTime.of(currentDate.toLocalDate(), LocalTime.of(18, 0));
+        for (LocalDate currentDate = startDate; currentDate.isBefore(endDate); currentDate = currentDate.plusDays(1)) {
+            LocalDateTime startTime = LocalDateTime.of(currentDate, LocalTime.of(9, 0));
+            LocalDateTime endTime = LocalDateTime.of(currentDate, LocalTime.of(18, 0));
             List<String> availableTimeSlots = new ArrayList<>();
             LocalDateTime currentSlot = startTime;
 
@@ -78,8 +77,14 @@ public class AppointmentController {
                 currentSlot = currentSlot.plusHours(1);
             }
 
-            availableTimeSlotsMap.put(currentDate.toLocalDate(), availableTimeSlots);
+            // Если на текущую дату нет записей, добавляем пустой список
+            if (availableTimeSlots.isEmpty()) {
+                availableTimeSlotsMap.put(currentDate, new ArrayList<>());
+            } else {
+                availableTimeSlotsMap.put(currentDate, availableTimeSlots);
+            }
         }
+
         return availableTimeSlotsMap;
     }
 
@@ -117,7 +122,7 @@ public class AppointmentController {
     }
 
     private String formatDateTime(LocalDateTime dateTime) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         return dateTime.format(formatter);
     }
 

@@ -139,3 +139,47 @@
 2024-05-18 14:27:25 INFO  TelegramBotController:501 - Ответил пользователю Арман
 2024-05-18 20:24:06 INFO  TelegramBotController:503 - Ответил пользователю Арман
 2024-05-18 20:25:27 INFO  TelegramBotController:503 - Ответил пользователю Арман
+2024-05-18 20:54:54 INFO  TelegramBotController:542 - Ответил пользователю Арман
+2024-05-18 20:57:26 INFO  TelegramBotController:542 - Ответил пользователю Арман
+2024-05-18 21:08:31 INFO  TelegramBotController:552 - Ответил пользователю Арман
+2024-05-18 21:09:55 INFO  TelegramBotController:552 - Ответил пользователю Арман
+2024-05-18 21:27:09 INFO  TelegramBotController:551 - Ответил пользователю Арман
+2024-05-18 21:36:25 INFO  TelegramBotController:549 - Ответил пользователю Арман
+2024-05-18 22:00:32 INFO  TelegramBotController:549 - Ответил пользователю Арман
+2024-05-18 22:06:33 INFO  TelegramBotController:549 - Ответил пользователю Арман
+2024-05-18 22:18:58 INFO  TelegramBotController:549 - Ответил пользователю Арман
+2024-05-18 22:20:28 INFO  TelegramBotController:549 - Ответил пользователю Арман
+2024-05-18 22:21:20 INFO  TelegramBotController:549 - Ответил пользователю Арман
+2024-05-18 22:22:29 INFO  TelegramBotController:549 - Ответил пользователю Арман
+2024-05-18 22:23:53 INFO  TelegramBotController:549 - Ответил пользователю Арман
+2024-05-19 12:59:01 INFO  TelegramBotController:588 - Ответил пользователю Арман
+2024-05-19 18:13:24 INFO  TelegramBotController:588 - Ответил пользователю Арман
+2024-05-19 18:24:40 INFO  TelegramBotController:586 - Ответил пользователю Арман
+2024-05-19 18:25:06 INFO  TelegramBotController:586 - Ответил пользователю Арман
+2024-05-19 18:34:49 ERROR TelegramBotController:91 - Ошибка настройки списка команд бота: Error executing org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands query: [400] Bad Request: BOT_COMMAND_INVALID
+2024-05-19 18:35:05 INFO  TelegramBotController:587 - Ответил пользователю Арман
+2024-05-19 18:35:48 ERROR TelegramBotController:91 - Ошибка настройки списка команд бота: Error executing org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands query: [400] Bad Request: BOT_COMMAND_INVALID
+2024-05-19 18:37:17 ERROR TelegramBotController:91 - Ошибка настройки списка команд бота: Error executing org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands query: [400] Bad Request: BOT_COMMAND_INVALID
+2024-05-19 18:50:35 ERROR TelegramBotController:91 - Ошибка настройки списка команд бота: Error executing org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands query: [400] Bad Request: BOT_COMMAND_INVALID
+2024-05-19 18:53:29 INFO  TelegramBotController:587 - Ответил пользователю Арман
+2024-05-19 18:53:43 ERROR TelegramBotController:91 - Ошибка настройки списка команд бота: Error executing org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands query: [400] Bad Request: BOT_COMMAND_INVALID
+2024-05-19 19:20:43 INFO  TelegramBotController:590 - Ответил пользователю Арман
+2024-05-19 19:25:35 INFO  TelegramBotController:590 - Ответил пользователю Арман
+2024-05-19 20:00:47 INFO  TelegramBotController:594 - Ответил пользователю Арман
+2024-05-19 22:11:30 INFO  TelegramBotController:594 - Ответил пользователю Арман
+2024-05-19 22:52:26 INFO  TelegramBotController:603 - Ответил пользователю Арман
+2024-05-19 22:53:57 INFO  TelegramBotController:594 - Ответил пользователю Арман
+2024-05-19 23:26:38 INFO  TelegramBotController:604 - Ответил пользователю Арман
+2024-05-20 00:06:57 INFO  TelegramBotController:644 - Ответил пользователю Арман
+2024-05-20 15:46:13 INFO  TelegramBotController:644 - Ответил пользователю Арман
+2024-05-20 15:46:23 INFO  TelegramBotController:644 - Ответил пользователю Арман
+2024-05-20 15:48:28 INFO  TelegramBotController:645 - Ответил пользователю Арман
+2024-05-20 15:54:46 INFO  TelegramBotController:644 - Ответил пользователю Арман
+2024-05-20 15:56:31 INFO  TelegramBotController:644 - Ответил пользователю Арман
+2024-05-20 17:01:16 INFO  TelegramBotController:648 - Ответил пользователю Арман
+2024-05-20 17:27:48 INFO  TelegramBotController:657 - Ответил пользователю Арман
+2024-05-20 18:26:47 INFO  TelegramBotController:662 - Ответил пользователю Арман
+2024-05-20 22:24:09 INFO  TelegramBotController:658 - Ответил пользователю Арман
+2024-05-20 22:36:17 INFO  TelegramBotController:689 - Ответил пользователю Арман
+2024-05-20 22:48:46 INFO  TelegramBotController:689 - Ответил пользователю Арман
+2024-05-20 23:02:18 INFO  TelegramBotController:746 - Ответил пользователю Арман
