@@ -74,6 +74,11 @@ public class TelegramBotController extends TelegramLongPollingBot {
     private BarberService barberService;
     private List<Barber> barbers; // список барберов
 
+    private boolean isAuthenticated = false;
+    private String lastAdminCommand = null;
+
+    private long adminChatId = -1;
+
     static final String HELP_TEXT = "Этот бот создан для демонстрации возможностей Spring \n\n" +
         "Вы можете выполнять команды из главного меню слева или введя команду: " +
             "Введите /start, чтобы увидеть приветственное сообщение\n\n" +
@@ -162,43 +167,20 @@ public class TelegramBotController extends TelegramLongPollingBot {
     public void handleMainAdminInput(long chatId, String messageText) {
         String[] parts = messageText.split("_");
 
-        if (parts.length == 2 && isMainAdminCredentials(parts[0], parts[1])) {
-            sendMessage(chatId, "Добро пожаловать, главный администратор!");
-            setMainAdmin(chatId);
-            showAdminOptions(chatId);
-        } else if (isMainAdmin(chatId)) {
-            if (messageText.startsWith("/addBarber")) {
-                sendMessage(chatId, "Введите данные барбера в формате: Имя_НомерТелефона_Специальность_Рейтинг");
-            } else if (messageText.startsWith("/editBarber")) {
-                sendMessage(chatId, "Введите данные для редактирования барбера в формате: ID_Имя_НомерТелефона_Специальность_Рейтинг");
-            } else if (messageText.startsWith("/deleteBarber")) {
-                sendMessage(chatId, "Введите ID барбера для удаления");
-            } else if (messageText.startsWith("/addService")) {
-                sendMessage(chatId, "Введите данные услуги в формате: Название_Цена");
-            } else if (messageText.startsWith("/editService")) {
-                sendMessage(chatId, "Введите данные для редактирования услуги в формате: ID_Название_Цена");
-            } else if (messageText.startsWith("/deleteService")) {
-                sendMessage(chatId, "Введите ID услуги для удаления");
-            } else if (messageText.startsWith("/setWorkingDays")) {
-                sendMessage(chatId, "Введите рабочие дни в формате: YYYY-MM-DD,YYYY-MM-DD,...");
-            } else if (messageText.startsWith("/postAnnouncement")) {
-                sendMessage(chatId, "Введите текст объявления");
-            } else if (messageText.startsWith("/postPhoto")) {
-                sendMessage(chatId, "Введите описание и URL фото в формате: Описание_URL");
-            } else if (messageText.startsWith("/postVoice")) {
-                sendMessage(chatId, "Введите URL голосового сообщения");
+        // Проверка формата ввода для разных команд
+        if (parts.length == 2 && isMainAdmin(chatId)) {
+            // Проверка ввода логина и пароля для главного администратора
+            String username = parts[0];
+            String password = parts[1];
+            if (isMainAdminCredentials(username, password)) {
+                sendMessage(chatId, "Добро пожаловать, главный администратор!");
+                setMainAdmin(chatId);
+                showAdminOptions(chatId);
             } else {
-                processAdminAction(chatId, messageText);
+                sendMessage(chatId, "Ошибка аутентификации. Пожалуйста, проверьте логин и пароль и попробуйте снова.");
             }
-        } else {
-            sendMessage(chatId, "Ошибка аутентификации. Пожалуйста, проверьте логин и пароль и попробуйте снова.");
-        }
-    }
-
-    private void processAdminAction(long chatId, String messageText) {
-        String[] parts = messageText.split("_");
-
-        if (parts.length == 4 && !messageText.startsWith("/")) {
+        } else if (parts.length == 4 && isMainAdmin(chatId)) {
+            // Добавление барбера
             try {
                 String name = parts[0];
                 String phoneNumber = parts[1];
@@ -209,7 +191,8 @@ public class TelegramBotController extends TelegramLongPollingBot {
             } catch (NumberFormatException e) {
                 sendMessage(chatId, "Неверный формат рейтинга.");
             }
-        } else if (parts.length == 2 && !messageText.startsWith("/")) {
+        } else if (parts.length == 2 && isMainAdmin(chatId)) {
+            // Добавление услуги
             try {
                 String serviceName = parts[0];
                 BigDecimal price = new BigDecimal(parts[1]);
@@ -218,43 +201,48 @@ public class TelegramBotController extends TelegramLongPollingBot {
             } catch (NumberFormatException e) {
                 sendMessage(chatId, "Неверный формат цены.");
             }
-        } else if (parts.length == 5 && !messageText.startsWith("/")) {
-            try {
-                int id = Integer.parseInt(parts[0]);
-                String name = parts[1];
-                String phoneNumber = parts[2];
-                String specialty = parts[3];
-                double rating = Double.parseDouble(parts[4]);
-                adminController.editBarber(id, name, phoneNumber, specialty, rating);
-                sendMessage(chatId, "Барбер успешно обновлен.");
-            } catch (NumberFormatException e) {
-                sendMessage(chatId, "Неверный формат ID или рейтинга.");
-            }
-        } else if (parts.length == 3 && !messageText.startsWith("/")) {
-            try {
-                int id = Integer.parseInt(parts[0]);
-                String serviceName = parts[1];
-                BigDecimal price = new BigDecimal(parts[2]);
-                adminController.editService(id, serviceName, price);
-                sendMessage(chatId, "Услуга успешно обновлена.");
-            } catch (NumberFormatException e) {
-                sendMessage(chatId, "Неверный формат ID или цены.");
-            }
-        } else if (parts.length == 1 && messageText.matches("\\d+")) {
-            try {
-                int id = Integer.parseInt(parts[0]);
-                if (messageText.startsWith("/deleteBarber")) {
-                    adminController.deleteBarber(id);
-                    sendMessage(chatId, "Барбер успешно удален.");
-                } else if (messageText.startsWith("/deleteService")) {
-                    adminController.deleteService(id);
-                    sendMessage(chatId, "Услуга успешно удалена.");
-                }
-            } catch (NumberFormatException e) {
-                sendMessage(chatId, "Неверный формат ID.");
-            }
         } else {
             sendMessage(chatId, "Неверный формат ввода.");
+        }
+    }
+
+    private void processAdminAction(long chatId, String messageText) {
+        if (lastAdminCommand != null) {
+            switch (lastAdminCommand) {
+                case "/addBarber":
+                    String[] barberParams = messageText.split("_");
+                    if (barberParams.length == 4) {
+                        try {
+                            adminController.addBarber(barberParams[0], barberParams[1], barberParams[2], Double.parseDouble(barberParams[3]));
+                            sendMessage(chatId, "Барбер успешно добавлен.");
+                        } catch (NumberFormatException e) {
+                            sendMessage(chatId, "Неверный формат рейтинга. Пожалуйста, введите данные в формате Имя_НомерТелефона_Специальность_Рейтинг.");
+                        }
+                    } else {
+                        sendMessage(chatId, "Неверный формат ввода для добавления барбера. Введите данные в формате Имя_НомерТелефона_Специальность_Рейтинг.");
+                    }
+                    break;
+                case "/addService":
+                    String[] serviceParams = messageText.split("_");
+                    if (serviceParams.length == 2) {
+                        try {
+                            adminController.addService(serviceParams[0], BigDecimal.valueOf(Double.parseDouble(serviceParams[1])));
+                            sendMessage(chatId, "Услуга успешно добавлена.");
+                        } catch (NumberFormatException e) {
+                            sendMessage(chatId, "Неверный формат цены. Пожалуйста, введите данные в формате Название_Цена.");
+                        }
+                    } else {
+                        sendMessage(chatId, "Неверный формат ввода для добавления услуги. Введите данные в формате Название_Цена.");
+                    }
+                    break;
+                // Добавьте другие случаи здесь
+                default:
+                    sendMessage(chatId, "Неизвестная команда администратора.");
+                    break;
+            }
+            lastAdminCommand = null;  // Сброс последней команды
+        } else {
+            sendMessage(chatId, "Извините, такой команды нет.");
         }
     }
 

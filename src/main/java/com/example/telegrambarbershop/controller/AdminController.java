@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/admin")
 public class AdminController {
 
+    private String lastAdminCommand = "";
+
     @Autowired
     private BarberRepository barberRepository;
 
@@ -130,62 +132,67 @@ public class AdminController {
 
     // Обработка команд администратора через бота
     public void handleAdminCommands(long chatId, String messageText) {
-        String[] parts = messageText.split("_");
-
-        if (parts.length == 4 && messageText.startsWith("Имя")) {
-            try {
-                String name = parts[0];
-                String phoneNumber = parts[1];
-                String specialty = parts[2];
-                double rating = Double.parseDouble(parts[3]);
-                addBarber(name, phoneNumber, specialty, rating);
-                botController.sendMessage(chatId, "Барбер успешно добавлен.");
-            } catch (NumberFormatException e) {
-                botController.sendMessage(chatId, "Неверный формат рейтинга.");
-            }
-        } else if (parts.length == 2 && messageText.startsWith("Название")) {
-            try {
-                String serviceName = parts[0];
-                BigDecimal price = new BigDecimal(parts[1]);
-                addService(serviceName, price);
-                botController.sendMessage(chatId, "Услуга успешно добавлена.");
-            } catch (NumberFormatException e) {
-                botController.sendMessage(chatId, "Неверный формат цены.");
-            }
+        if (messageText.startsWith("/addBarber")) {
+            botController.sendMessage(chatId, "Введите данные барбера в формате: Имя_НомерТелефона_Специальность_Рейтинг");
+        } else if (messageText.startsWith("/editBarber")) {
+            botController.sendMessage(chatId, "Введите данные для редактирования барбера в формате: ID_Имя_НомерТелефона_Специальность_Рейтинг");
+        } else if (messageText.startsWith("/deleteBarber")) {
+            botController.sendMessage(chatId, "Введите ID барбера для удаления");
+        } else if (messageText.startsWith("/addService")) {
+            botController.sendMessage(chatId, "Введите данные услуги в формате: Название_Цена");
+        } else if (messageText.startsWith("/editService")) {
+            botController.sendMessage(chatId, "Введите данные для редактирования услуги в формате: ID_Название_Цена");
+        } else if (messageText.startsWith("/deleteService")) {
+            botController.sendMessage(chatId, "Введите ID услуги для удаления");
+        } else if (messageText.startsWith("/setWorkingDays")) {
+            botController.sendMessage(chatId, "Введите рабочие дни в формате: YYYY-MM-DD,YYYY-MM-DD,...");
+        } else if (messageText.startsWith("/postAnnouncement")) {
+            botController.sendMessage(chatId, "Введите текст объявления");
+        } else if (messageText.startsWith("/postPhoto")) {
+            botController.sendMessage(chatId, "Введите описание и URL фото в формате: Описание_URL");
+        } else if (messageText.startsWith("/postVoice")) {
+            botController.sendMessage(chatId, "Введите URL голосового сообщения");
         } else {
-            botController.sendMessage(chatId, "Неверный формат ввода.");
+            botController.sendMessage(chatId, "Неизвестная команда администратора.");
         }
     }
 
     public void handleAdminInput(long chatId, String messageText) {
-        if (messageText.contains("_")) {
+        // Здесь нужно добавить логику обработки ввода для каждой команды администратора
+        if (messageText.startsWith("Имя_")) {
             String[] parts = messageText.split("_");
-
-            if (parts.length == 4) { // Для добавления барбера
+            if (parts.length == 4) {
+                String name = parts[0];
+                String phoneNumber = parts[1];
+                String specialty = parts[2];
+                double rating;
                 try {
-                    String name = parts[0];
-                    String phoneNumber = parts[1];
-                    String specialty = parts[2];
-                    double rating = Double.parseDouble(parts[3]);
-                    addBarber(name, phoneNumber, specialty, rating);
-                    botController.sendMessage(chatId, "Барбер добавлен.");
+                    rating = Double.parseDouble(parts[3]);
                 } catch (NumberFormatException e) {
                     botController.sendMessage(chatId, "Неверный формат рейтинга.");
+                    return;
                 }
-            } else if (parts.length == 2) { // Для добавления услуги
-                try {
-                    String serviceName = parts[0];
-                    BigDecimal price = new BigDecimal(parts[1]);
-                    addService(serviceName, price);
-                    botController.sendMessage(chatId, "Услуга добавлена.");
-                } catch (NumberFormatException e) {
-                    botController.sendMessage(chatId, "Неверный формат цены.");
-                }
+                addBarber(name, phoneNumber, specialty, rating);
+                botController.sendMessage(chatId, "Барбер добавлен.");
             } else {
                 botController.sendMessage(chatId, "Неверный формат ввода.");
             }
-        } else {
-            botController.sendMessage(chatId, "Неверный формат ввода.");
+        } else if (messageText.startsWith("Название_")) {
+            String[] parts = messageText.split("_");
+            if (parts.length == 2) {
+                String serviceName = parts[0];
+                BigDecimal price;
+                try {
+                    price = new BigDecimal(parts[1]);
+                } catch (NumberFormatException e) {
+                    botController.sendMessage(chatId, "Неверный формат цены.");
+                    return;
+                }
+                addService(serviceName, price);
+                botController.sendMessage(chatId, "Услуга добавлена.");
+            } else {
+                botController.sendMessage(chatId, "Неверный формат ввода.");
+            }
         }
     }
 
