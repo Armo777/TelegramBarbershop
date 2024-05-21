@@ -124,37 +124,38 @@ public class TelegramBotController extends TelegramLongPollingBot {
 
             registerUser(chatId);  // Регистрация пользователя при получении сообщения
 
-            if (messageText != null) {
-                if (messageText.contains("_")) {
-                    handleMainAdminInput(chatId, messageText);
-                } else {
-                    switch (messageText) {
-                        case "/start":
-                            startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
-                            break;
-                        case "/help":
-                            sendMessage(chatId, HELP_TEXT);
-                            break;
-                        case "/bookappointment":
-                            showBarbers(chatId);
-                            break;
-                        case "/adminlogin":
-                            adminLogin(chatId);
-                            break;
-                        case "/mainadmin":
-                            mainAdminLogin(chatId);
-                            break;
-                        default:
-                            if (isMainAdmin(chatId)) {
-                                adminController.handleAdminCommands(chatId, messageText);
-                            } else if (messageText.startsWith("/")) {
-                                sendMessage(chatId, "Извините, такой команды нет.");
-                            } else {
-                                sendMessage(chatId, "Извините, такой команды нет.");
-                            }
-                            break;
-                    }
+            if (messageText.startsWith("/")) {
+                switch (messageText) {
+                    case "/start":
+                        startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
+                        break;
+                    case "/help":
+                        sendMessage(chatId, HELP_TEXT);
+                        break;
+                    case "/bookappointment":
+                        showBarbers(chatId);
+                        break;
+                    case "/adminlogin":
+                        adminLogin(chatId);
+                        break;
+                    case "/mainadmin":
+                        mainAdminLogin(chatId);
+                        break;
+                    case "/addBarber":
+                    case "/addService":
+                        if (isAuthenticated && chatId == adminChatId) {
+                            lastAdminCommand = messageText;
+                            sendMessage(chatId, "Введите данные в соответствующем формате.");
+                        } else {
+                            sendMessage(chatId, "Вы не авторизованы как главный администратор.");
+                        }
+                        break;
+                    default:
+                        sendMessage(chatId, "Извините, такой команды нет.");
+                        break;
                 }
+            } else {
+                handleMainAdminInput(chatId, messageText);
             }
         } else if (update.hasCallbackQuery()) {
             String callbackData = update.getCallbackQuery().getData();
@@ -165,48 +166,32 @@ public class TelegramBotController extends TelegramLongPollingBot {
     }
 
     public void handleMainAdminInput(long chatId, String messageText) {
-        String[] parts = messageText.split("_");
-
-        // Проверка формата ввода для разных команд
-        if (parts.length == 2 && isMainAdmin(chatId)) {
-            // Проверка ввода логина и пароля для главного администратора
-            String username = parts[0];
-            String password = parts[1];
-            if (isMainAdminCredentials(username, password)) {
-                sendMessage(chatId, "Добро пожаловать, главный администратор!");
-                setMainAdmin(chatId);
-                showAdminOptions(chatId);
-            } else {
-                sendMessage(chatId, "Ошибка аутентификации. Пожалуйста, проверьте логин и пароль и попробуйте снова.");
-            }
-        } else if (parts.length == 4 && isMainAdmin(chatId)) {
-            // Добавление барбера
-            try {
-                String name = parts[0];
-                String phoneNumber = parts[1];
-                String specialty = parts[2];
-                double rating = Double.parseDouble(parts[3]);
-                adminController.addBarber(name, phoneNumber, specialty, rating);
-                sendMessage(chatId, "Барбер успешно добавлен.");
-            } catch (NumberFormatException e) {
-                sendMessage(chatId, "Неверный формат рейтинга.");
-            }
-        } else if (parts.length == 2 && isMainAdmin(chatId)) {
-            // Добавление услуги
-            try {
-                String serviceName = parts[0];
-                BigDecimal price = new BigDecimal(parts[1]);
-                adminController.addService(serviceName, price);
-                sendMessage(chatId, "Услуга успешно добавлена.");
-            } catch (NumberFormatException e) {
-                sendMessage(chatId, "Неверный формат цены.");
-            }
+        // Проверка аутентификации
+        if (isAuthenticated && chatId == adminChatId) {
+            handleAdminCommandInput(chatId, messageText);
         } else {
-            sendMessage(chatId, "Неверный формат ввода.");
+            // Проверка логина и пароля
+            if (messageText.contains("_")) {
+                String[] credentials = messageText.split("_");
+                if (credentials.length == 2) {
+                    if (isMainAdminCredentials(credentials[0], credentials[1])) {
+                        sendMessage(chatId, "Добро пожаловать, главный администратор!");
+                        isAuthenticated = true;
+                        adminChatId = chatId;
+                        showAdminOptions(chatId);
+                    } else {
+                        sendMessage(chatId, "Ошибка аутентификации. Пожалуйста, проверьте логин и пароль и попробуйте снова.");
+                    }
+                } else {
+                    sendMessage(chatId, "Неверный формат ввода.");
+                }
+            } else {
+                sendMessage(chatId, "Извините, такой команды нет.");
+            }
         }
     }
 
-    private void processAdminAction(long chatId, String messageText) {
+    private void handleAdminCommandInput(long chatId, String messageText) {
         if (lastAdminCommand != null) {
             switch (lastAdminCommand) {
                 case "/addBarber":
