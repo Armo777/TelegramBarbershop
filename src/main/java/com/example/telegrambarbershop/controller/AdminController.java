@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/admin")
 public class AdminController {
 
-    private String lastAdminCommand = "";
+    //private String lastAdminCommand = "";
 
     @Autowired
     private BarberRepository barberRepository;
@@ -132,28 +132,44 @@ public class AdminController {
 
     // Обработка команд администратора через бота
     public void handleAdminCommands(long chatId, String messageText) {
-        if (messageText.startsWith("/addBarber")) {
-            botController.sendMessage(chatId, "Введите данные барбера в формате: Имя_НомерТелефона_Специальность_Рейтинг");
-        } else if (messageText.startsWith("/editBarber")) {
-            botController.sendMessage(chatId, "Введите данные для редактирования барбера в формате: ID_Имя_НомерТелефона_Специальность_Рейтинг");
-        } else if (messageText.startsWith("/deleteBarber")) {
-            botController.sendMessage(chatId, "Введите ID барбера для удаления");
-        } else if (messageText.startsWith("/addService")) {
-            botController.sendMessage(chatId, "Введите данные услуги в формате: Название_Цена");
-        } else if (messageText.startsWith("/editService")) {
-            botController.sendMessage(chatId, "Введите данные для редактирования услуги в формате: ID_Название_Цена");
-        } else if (messageText.startsWith("/deleteService")) {
-            botController.sendMessage(chatId, "Введите ID услуги для удаления");
-        } else if (messageText.startsWith("/setWorkingDays")) {
-            botController.sendMessage(chatId, "Введите рабочие дни в формате: YYYY-MM-DD,YYYY-MM-DD,...");
-        } else if (messageText.startsWith("/postAnnouncement")) {
-            botController.sendMessage(chatId, "Введите текст объявления");
-        } else if (messageText.startsWith("/postPhoto")) {
-            botController.sendMessage(chatId, "Введите описание и URL фото в формате: Описание_URL");
-        } else if (messageText.startsWith("/postVoice")) {
-            botController.sendMessage(chatId, "Введите URL голосового сообщения");
+        if (botController.lastAdminCommand != null) {
+            switch (botController.lastAdminCommand) {
+                case "/addBarber":
+                    botController.sendMessage(chatId, "Введите данные в формате: Имя_НомерТелефона_Специальность_Рейтинг");
+                    break;
+                case "/editBarber":
+                    botController.sendMessage(chatId, "Введите данные в формате: ID_Имя_НомерТелефона_Специальность_Рейтинг");
+                    break;
+                case "/deleteBarber":
+                    botController.sendMessage(chatId, "Введите ID барбера для удаления");
+                    break;
+                case "/addService":
+                    botController.sendMessage(chatId, "Введите данные в формате: Название_Цена");
+                    break;
+                case "/editService":
+                    botController.sendMessage(chatId, "Введите данные в формате: ID_Название_Цена");
+                    break;
+                case "/deleteService":
+                    botController.sendMessage(chatId, "Введите ID услуги для удаления");
+                    break;
+                case "/setWorkingDays":
+                    botController.sendMessage(chatId, "Введите данные в формате: ID_РабочиеДни");
+                    break;
+                case "/postAnnouncement":
+                    botController.sendMessage(chatId, "Введите текст объявления");
+                    break;
+                case "/postPhoto":
+                    botController.sendMessage(chatId, "Пришлите фото для публикации");
+                    break;
+                case "/postVoice":
+                    botController.sendMessage(chatId, "Пришлите голосовое сообщение для публикации");
+                    break;
+                default:
+                    botController.sendMessage(chatId, "Неизвестная команда администратора.");
+                    break;
+            }
         } else {
-            botController.sendMessage(chatId, "Неизвестная команда администратора.");
+            botController.sendMessage(chatId, "Извините, такой команды нет.");
         }
     }
 
@@ -205,7 +221,7 @@ public class AdminController {
         }
     }
 
-    private void sendPhotoMessageToAll(String caption, String photoUrl) {
+    public void sendPhotoMessageToAll(String caption, String photoUrl) {
         List<Long> userIds = getAllUserIds();
         for (Long userId : userIds) {
             SendPhoto sendPhoto = new SendPhoto();
@@ -220,7 +236,7 @@ public class AdminController {
         }
     }
 
-    private void sendVoiceMessageToAll(String voiceUrl) {
+    public void sendVoiceMessageToAll(String voiceUrl) {
         List<Long> userIds = getAllUserIds();
         for (Long userId : userIds) {
             SendVoice sendVoice = new SendVoice();

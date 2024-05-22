@@ -14,6 +14,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
@@ -75,7 +76,7 @@ public class TelegramBotController extends TelegramLongPollingBot {
     private List<Barber> barbers; // список барберов
 
     private boolean isAuthenticated = false;
-    private String lastAdminCommand = null;
+    public String lastAdminCommand = null;
 
     private long adminChatId = -1;
 
@@ -142,10 +143,19 @@ public class TelegramBotController extends TelegramLongPollingBot {
                         mainAdminLogin(chatId);
                         break;
                     case "/addBarber":
+                    case "/editBarber":
+                    case "/deleteBarber":
                     case "/addService":
+                    case "/editService":
+                    case "/deleteService":
+                    case "/setWorkingDays":
+                    case "/postAnnouncement":
+                    case "/postPhoto":
+                    case "/postVoice":
                         if (isAuthenticated && chatId == adminChatId) {
                             lastAdminCommand = messageText;
-                            sendMessage(chatId, "Введите данные в соответствующем формате.");
+                            adminController.handleAdminCommands(chatId, messageText);
+                            //sendMessage(chatId, "Введите данные в соответствующем формате.");
                         } else {
                             sendMessage(chatId, "Вы не авторизованы как главный администратор.");
                         }
@@ -157,12 +167,28 @@ public class TelegramBotController extends TelegramLongPollingBot {
             } else {
                 handleMainAdminInput(chatId, messageText);
             }
-        } else if (update.hasCallbackQuery()) {
-            String callbackData = update.getCallbackQuery().getData();
-            long messageId = update.getCallbackQuery().getMessage().getMessageId();
-            long chatId = update.getCallbackQuery().getMessage().getChatId();
-            handleCallbackQuery(update.getCallbackQuery(), callbackData, chatId, messageId);
-        }
+        } else if (update.getMessage().hasPhoto()) {
+            if ("/postPhoto".equals(lastAdminCommand)) {
+                List<PhotoSize> photos = update.getMessage().getPhoto();
+                String fileId = photos.get(photos.size() - 1).getFileId();
+                String caption = update.getMessage().getCaption() != null ? update.getMessage().getCaption() : "";
+                adminController.sendPhotoMessageToAll(caption, fileId);
+                sendMessage(update.getMessage().getChatId(), "Фото успешно опубликовано.");
+                lastAdminCommand = null;
+            }
+        } else if (update.getMessage().hasVoice()) {
+                if ("/postVoice".equals(lastAdminCommand)) {
+                    String fileId = update.getMessage().getVoice().getFileId();
+                    adminController.sendVoiceMessageToAll(fileId);
+                    sendMessage(update.getMessage().getChatId(), "Голосовое сообщение успешно опубликовано.");
+                    lastAdminCommand = null;
+                }
+            } else if (update.hasCallbackQuery()) {
+                String callbackData = update.getCallbackQuery().getData();
+                long messageId = update.getCallbackQuery().getMessage().getMessageId();
+                long chatId = update.getCallbackQuery().getMessage().getChatId();
+                handleCallbackQuery(update.getCallbackQuery(), callbackData, chatId, messageId);
+            }
     }
 
     public void handleMainAdminInput(long chatId, String messageText) {
@@ -207,6 +233,28 @@ public class TelegramBotController extends TelegramLongPollingBot {
                         sendMessage(chatId, "Неверный формат ввода для добавления барбера. Введите данные в формате Имя_НомерТелефона_Специальность_Рейтинг.");
                     }
                     break;
+                case "/editBarber":
+                    String[] editBarberParams = messageText.split("_");
+                    if (editBarberParams.length == 5) {
+                        try {
+                            adminController.editBarber(Integer.parseInt(editBarberParams[0]), editBarberParams[1], editBarberParams[2], editBarberParams[3], Double.parseDouble(editBarberParams[4]));
+                            sendMessage(chatId, "Барбер успешно отредактирован.");
+                        } catch (NumberFormatException e) {
+                            sendMessage(chatId, "Неверный формат ID или рейтинга. Пожалуйста, введите данные в формате ID_Имя_НомерТелефона_Специальность_Рейтинг.");
+                        }
+                    } else {
+                        sendMessage(chatId, "Неверный формат ввода для редактирования барбера. Введите данные в формате ID_Имя_НомерТелефона_Специальность_Рейтинг.");
+                    }
+                    break;
+                case "/deleteBarber":
+                    try {
+                        long barberId = Long.parseLong(messageText);
+                        adminController.deleteBarber((int) barberId);
+                        sendMessage(chatId, "Барбер успешно удален.");
+                    } catch (NumberFormatException e) {
+                        sendMessage(chatId, "Неверный формат ID. Пожалуйста, введите ID барбера.");
+                    }
+                    break;
                 case "/addService":
                     String[] serviceParams = messageText.split("_");
                     if (serviceParams.length == 2) {
@@ -219,6 +267,38 @@ public class TelegramBotController extends TelegramLongPollingBot {
                     } else {
                         sendMessage(chatId, "Неверный формат ввода для добавления услуги. Введите данные в формате Название_Цена.");
                     }
+                    break;
+                case "/editService":
+                    String[] editServiceParams = messageText.split("_");
+                    if (editServiceParams.length == 3) {
+                        try {
+                            adminController.editService(Integer.parseInt(editServiceParams[0]), editServiceParams[1], BigDecimal.valueOf(Double.parseDouble(editServiceParams[2])));
+                            sendMessage(chatId, "Услуга успешно отредактирована.");
+                        } catch (NumberFormatException e) {
+                            sendMessage(chatId, "Неверный формат ID или цены. Пожалуйста, введите данные в формате ID_Название_Цена.");
+                        }
+                    } else {
+                        sendMessage(chatId, "Неверный формат ввода для редактирования услуги. Введите данные в формате ID_Название_Цена.");
+                    }
+                    break;
+                case "/deleteService":
+                    try {
+                        long serviceId = Long.parseLong(messageText);
+                        adminController.deleteService((int) serviceId);
+                        sendMessage(chatId, "Услуга успешно удалена.");
+                    } catch (NumberFormatException e) {
+                        sendMessage(chatId, "Неверный формат ID. Пожалуйста, введите ID услуги.");
+                    }
+                    break;
+                case "/postAnnouncement":
+                    adminController.postAnnouncement(messageText);
+                    sendMessage(chatId, "Объявление успешно опубликовано.");
+                    break;
+                case "/postPhoto":
+                    sendMessage(chatId, "Пришлите фото для публикации.");
+                    break;
+                case "/postVoice":
+                    sendMessage(chatId, "Пришлите голосовое сообщение для публикации.");
                     break;
                 // Добавьте другие случаи здесь
                 default:
