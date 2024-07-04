@@ -1,15 +1,14 @@
 package com.example.telegrambarbershop.controller;
 
-import com.example.telegrambarbershop.entity.Barber;
-import com.example.telegrambarbershop.entity.Service;
-import com.example.telegrambarbershop.entity.User;
-import com.example.telegrambarbershop.repositories.BarberRepository;
-import com.example.telegrambarbershop.repositories.ServiceRepository;
-import com.example.telegrambarbershop.repositories.UserRepository;
+import com.example.telegrambarbershop.entity.*;
+import com.example.telegrambarbershop.repositories.*;
+import org.apache.velocity.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.methods.send.SendVideoNote;
 import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -18,7 +17,10 @@ import org.telegram.telegrambots.meta.generics.TelegramBot;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -38,6 +40,35 @@ public class AdminController {
 
     @Autowired
     private TelegramBotController botController;
+
+    @Autowired
+    private BarberAdminRepository barberAdminRepository;
+
+    @Autowired
+    private AppointmentRepository appointmentRepository;
+
+    @Autowired
+    private MainAdminRepository mainAdminRepository;
+
+    @GetMapping("/viewBarbers")
+    public List<Barber> viewBarbers() {
+        return barberRepository.findAll();
+    }
+
+    @GetMapping("/viewServices")
+    public List<Service> viewServices() {
+        return serviceRepository.findAll();
+    }
+
+    @GetMapping("/viewAppointments")
+    public List<Appointment> viewAppointments() {
+        return appointmentRepository.findAll();
+    }
+
+    @GetMapping("/viewBarberAdmins")
+    public List<BarberAdmin> viewBarberAdmins() {
+        return barberAdminRepository.findAll();
+    }
 
     // Добавление барбера
     @PostMapping("/addBarber")
@@ -101,6 +132,19 @@ public class AdminController {
         return "Услуга удалена";
     }
 
+    @PutMapping("/addBarberAdmin")
+    public void addBarberAdmin(String username, String password, long barberId) {
+        Barber barber = barberRepository.findById((int) barberId).orElse(null);
+        if (barber == null) {
+            throw new IllegalArgumentException("Барбер с указанным ID не найден.");
+        }
+        BarberAdmin barberAdmin = new BarberAdmin();
+        barberAdmin.setUsername(username);
+        barberAdmin.setPassword(password);
+        barberAdmin.setBarber(barber);
+        barberAdminRepository.save(barberAdmin);
+    }
+
     // Настройка рабочих дней
     @PostMapping("/setWorkingDays")
     public String setWorkingDays(@RequestParam List<LocalDate> workingDays) {
@@ -130,10 +174,57 @@ public class AdminController {
         return "Голосовое сообщение опубликовано";
     }
 
+    @PostMapping("/postVideoNote")
+    public String postVideoNote(@RequestParam String videoNoteId) {
+        sendVideoNoteToAll(videoNoteId);
+        return "Видеосообщение успешно опубликовано";
+    }
+
+    @PutMapping("/updateBarberAdmin/{id}")
+    public ResponseEntity<BarberAdmin> updateBarberAdmin(@PathVariable Long id, @RequestBody BarberAdmin updatedBarberAdmin) {
+        Optional<BarberAdmin> barberAdminOptional = barberAdminRepository.findById(id);
+        if (barberAdminOptional.isPresent()) {
+            BarberAdmin barberAdmin = barberAdminOptional.get();
+            barberAdmin.setUsername(updatedBarberAdmin.getUsername());
+            barberAdmin.setPassword(updatedBarberAdmin.getPassword());
+            barberAdmin.setBarber(updatedBarberAdmin.getBarber());
+            barberAdminRepository.save(barberAdmin);
+            return ResponseEntity.ok(barberAdmin);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/deleteBarberAdmin/{id}")
+    public ResponseEntity<Void> deleteBarberAdmin(@PathVariable Long id) {
+        if (barberAdminRepository.existsById(id)) {
+            barberAdminRepository.deleteById(id);
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     // Обработка команд администратора через бота
     public void handleAdminCommands(long chatId, String messageText) {
         if (botController.lastAdminCommand != null) {
             switch (botController.lastAdminCommand) {
+                case "/viewBarbers":
+                    List<Barber> barbers = viewBarbers();
+                    botController.sendMessage(chatId, formatBarbers(barbers));
+                    break;
+                case "/viewServices":
+                    List<Service> services = viewServices();
+                    botController.sendMessage(chatId, formatServices(services));
+                    break;
+                case "/viewAppointments":
+                    List<Appointment> appointments = viewAppointments();
+                    botController.sendMessage(chatId, formatAppointments(appointments));
+                    break;
+                case "/viewBarberAdmins":
+                    List<BarberAdmin> barberAdmins = viewBarberAdmins();
+                    botController.sendMessage(chatId, formatBarberAdmins(barberAdmins));
+                    break;
                 case "/addBarber":
                     botController.sendMessage(chatId, "Введите данные в формате: Имя_НомерТелефона_Специальность_Рейтинг");
                     break;
@@ -152,6 +243,15 @@ public class AdminController {
                 case "/deleteService":
                     botController.sendMessage(chatId, "Введите ID услуги для удаления");
                     break;
+                case "/addBarberAdmin":
+                    botController.sendMessage(chatId, "Введите данные в формате: Логин_Пароль_IDСотрудника");
+                    break;
+                case "/updateBarberAdmin":
+                    botController.sendMessage(chatId, "Введите данные в формате: Логин_Пароль_IDСотрудника");
+                    break;
+                case "/deleteBarberAdmin":
+                    botController.sendMessage(chatId, "Введите ID администратора сотрудника для удаления");
+                    break;
                 case "/setWorkingDays":
                     botController.sendMessage(chatId, "Введите данные в формате: ID_РабочиеДни");
                     break;
@@ -164,6 +264,9 @@ public class AdminController {
                 case "/postVoice":
                     botController.sendMessage(chatId, "Пришлите голосовое сообщение для публикации");
                     break;
+                case "/postVideoNote":
+                    botController.sendMessage(chatId, "Пришлите видеосообщение для публикации");
+                    break;
                 default:
                     botController.sendMessage(chatId, "Неизвестная команда администратора.");
                     break;
@@ -171,6 +274,68 @@ public class AdminController {
         } else {
             botController.sendMessage(chatId, "Извините, такой команды нет.");
         }
+    }
+
+    private String formatBarbers(List<Barber> barbers) {
+        StringBuilder sb = new StringBuilder("Список барберов:\n");
+        for (Barber barber : barbers) {
+            sb.append(barber.getId())
+                    .append(": ")
+                    .append(barber.getName())
+                    .append(", Телефон: ")
+                    .append(barber.getPhoneNumber())
+                    .append(", Специальность: ")
+                    .append(barber.getSpecialty())
+                    .append(", Рейтинг: ")
+                    .append(barber.getRating())
+                    .append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String formatServices(List<Service> services) {
+        StringBuilder sb = new StringBuilder("Список услуг:\n");
+        for (Service service : services) {
+            sb.append(service.getId())
+                    .append(": ")
+                    .append(service.getServiceName())
+                    .append(", Цена: ")
+                    .append(service.getPrice())
+                    .append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String formatAppointments(List<Appointment> appointments) {
+        StringBuilder sb = new StringBuilder("Список записей:\n");
+        for (Appointment appointment : appointments) {
+            sb.append(appointment.getId())
+                    .append(": Клиент: ")
+                    .append(appointment.getNameUser())
+                    .append(", Барбер: ")
+                    .append(appointment.getBarber().getName())
+                    .append(", Дата: ")
+                    .append(appointment.getAppointmentDateTime())
+                    .append(", Услуга: ")
+                    .append(appointment.getService().getServiceName())
+                    .append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String formatBarberAdmins(List<BarberAdmin> barberAdmins) {
+        StringBuilder sb = new StringBuilder("Список администраторов барберов:\n");
+        for (BarberAdmin barberAdmin : barberAdmins) {
+            sb.append(barberAdmin.getId())
+                    .append(": Логин: ")
+                    .append(barberAdmin.getUsername())
+                    .append(", Пароль: ")
+                    .append(barberAdmin.getPassword())
+                    .append(", Барбер: ")
+                    .append(barberAdmin.getBarber().getName())
+                    .append("\n");
+        }
+        return sb.toString();
     }
 
     public void handleAdminInput(long chatId, String messageText) {
@@ -244,6 +409,20 @@ public class AdminController {
             sendVoice.setVoice(new InputFile(voiceUrl));
             try {
                 botController.execute(sendVoice);
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void sendVideoNoteToAll(String fileId) {
+        List<Long> userIds = getAllUserIds(); // Метод получения всех chatId пользователей
+        for (Long chatId : userIds) {
+            SendVideoNote videoNote = new SendVideoNote();
+            videoNote.setChatId(chatId.toString());
+            videoNote.setVideoNote(new InputFile(fileId));
+            try {
+                botController.execute(videoNote);
             } catch (TelegramApiException e) {
                 e.printStackTrace();
             }
