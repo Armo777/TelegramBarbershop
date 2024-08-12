@@ -18,14 +18,26 @@ public class Service {
     @Column(name = "bigDecimal_f", nullable = false)
     private BigDecimal price;
 
-    public Service(Integer id, String serviceName, BigDecimal price) {
+    @Column(name = "duration_minutes_f", nullable = false)
+    private int durationMinutes;
+
+    public Service(Integer id, String serviceName, BigDecimal price, int durationMinutes) {
         this.id = id;
         this.serviceName = serviceName;
         this.price = price;
+        this.durationMinutes = durationMinutes;
     }
 
     public Service() {
 
+    }
+
+    public int getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public void setDurationMinutes(int durationMinutes) {
+        this.durationMinutes = durationMinutes;
     }
 
     public Integer getId() {

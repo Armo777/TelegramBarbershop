@@ -2,9 +2,13 @@ package com.example.telegrambarbershop.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 @Data
 @Entity
+@EqualsAndHashCode(exclude = {"barber"})  // Исключаем ассоциацию с Barber
+@ToString(exclude = "barber")
 public class BarberAdmin {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

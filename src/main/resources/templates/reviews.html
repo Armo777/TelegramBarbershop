@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отзывы - Барбершоп</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        body {
+            font-size: 1.2rem; /* Увеличиваем базовый размер шрифта */
+        }
+        .card-title {
+            font-size: 1.5rem; /* Увеличиваем размер шрифта заголовка карточки */
+        }
+        .card-subtitle {
+            font-size: 1.2rem; /* Увеличиваем размер шрифта подзаголовка карточки */
+        }
+        .card-text {
+            font-size: 1.1rem; /* Увеличиваем размер шрифта текста карточки */
+        }
+        .blockquote-footer {
+            font-size: 1rem; /* Увеличиваем размер шрифта в футере */
+        }
+        header .h1 {
+            font-size: 2.5rem; /* Увеличиваем размер шрифта заголовка на странице */
+        }
+        header nav a {
+            font-size: 1.3rem; /* Увеличиваем размер шрифта навигационных ссылок */
+        }
+        h2 {
+            font-size: 2rem; /* Увеличиваем размер шрифта заголовка раздела */
+        }
+    </style>
+</head>
+<body>
+<header class="bg-dark text-white p-3">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="h1">Барбершоп</div>
+            <nav>
+                <a href="index.html" class="text-white mr-3">Главная</a>
+                <a href="about.html" class="text-white mr-3">О нас</a>
+                <a href="services.html" class="text-white mr-3">Услуги</a>
+                <a href="portfolio.html" class="text-white mr-3">Работы</a>
+                <a href="reviews.html" class="text-white">Отзывы</a>
+                <a href="contacts.html" class="text-white">Контакты</a>
+            </nav>
+        </div>
+    </div>
+</header>
+<main class="py-5">
+    <div class="container">
+        <h2 class="mb-4">Отзывы</h2>
+        <div id="reviews-container" class="row">
+            <!-- Отзывы будут загружены и вставлены сюда -->
+        </div>
+    </div>
+</main>
+<footer class="bg-dark text-white text-center py-3">
+    <p>Барбершоп &copy; 2024</p>
+</footer>
+
+<!-- Скрипты -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    // Функция для генерации звезд рейтинга
+    function generateStars(rating) {
+        let stars = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= rating) {
+                stars += '<span class="text-warning">&#9733;</span>'; // Полная звезда
+            } else {
+                stars += '<span class="text-warning">&#9734;</span>'; // Пустая звезда
+            }
+        }
+        return stars;
+    }
+
+    // Функция для загрузки и отображения отзывов
+    function loadReviews() {
+        fetch('http://localhost:8085/api/reviews')
+            .then(response => response.json())
+            .then(reviews => {
+                const container = document.getElementById('reviews-container');
+                container.innerHTML = ''; // Очищаем контейнер перед добавлением отзывов
+                reviews.forEach(review => {
+                    const reviewElement = document.createElement('div');
+                    reviewElement.className = 'col-md-4 mb-3';
+                    reviewElement.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">${review.userName}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">${review.barber ? review.barber.name : 'Неизвестный барбер'}</h6>
+                            <p class="card-text">${review.comment}</p>
+                            <footer class="blockquote-footer">
+                                ${generateStars(review.rating)} <br>
+                                <small>Оценка барбера: ${review.barber.rating.toFixed(1)}</small><br>
+                                <small>${new Date(review.createdAt).toLocaleString()}</small>
+                            </footer>
+                        </div>
+                    </div>
+                `;
+                    container.appendChild(reviewElement);
+                });
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке отзывов:', error);
+            });
+    }
+
+    // Загрузка отзывов при загрузке страницы
+    document.addEventListener('DOMContentLoaded', loadReviews);
+</script>
+</body>
+</html>
+
+
+
+

@@ -2,6 +2,7 @@ package com.example.telegrambarbershop.controller;
 
 import com.example.telegrambarbershop.entity.*;
 import com.example.telegrambarbershop.repositories.*;
+import com.example.telegrambarbershop.service.AppointmentService;
 import org.apache.velocity.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -27,8 +28,6 @@ import java.util.stream.Collectors;
 @RequestMapping("/admin")
 public class AdminController {
 
-    //private String lastAdminCommand = "";
-
     @Autowired
     private BarberRepository barberRepository;
 
@@ -50,6 +49,9 @@ public class AdminController {
     @Autowired
     private MainAdminRepository mainAdminRepository;
 
+    @Autowired
+    private AppointmentService appointmentService;
+
     @GetMapping("/viewBarbers")
     public List<Barber> viewBarbers() {
         return barberRepository.findAll();
@@ -62,7 +64,7 @@ public class AdminController {
 
     @GetMapping("/viewAppointments")
     public List<Appointment> viewAppointments() {
-        return appointmentRepository.findAll();
+        return appointmentService.getAllAppointmentsWithDetails();
     }
 
     @GetMapping("/viewBarberAdmins")
@@ -70,7 +72,6 @@ public class AdminController {
         return barberAdminRepository.findAll();
     }
 
-    // Добавление барбера
     @PostMapping("/addBarber")
     public void addBarber(String name, String phoneNumber, String specialty, double rating) {
         Barber barber = new Barber();
@@ -81,7 +82,6 @@ public class AdminController {
         barberRepository.save(barber);
     }
 
-    // Редактирование барбера
     @PutMapping("/editBarber")
     public String editBarber(@RequestParam int id, @RequestParam String name, @RequestParam String phoneNumber, @RequestParam String specialty, @RequestParam double rating) {
         Barber barber = barberRepository.findById(id).orElse(null);
@@ -96,36 +96,34 @@ public class AdminController {
         return "Барбер обновлен";
     }
 
-    // Удаление барбера
     @DeleteMapping("/deleteBarber")
     public String deleteBarber(@RequestParam int id) {
         barberRepository.deleteById(id);
         return "Барбер удален";
     }
 
-    // Добавление услуги
     @PostMapping("/addService")
-    public void addService(String serviceName, BigDecimal price) {
+    public void addService(String serviceName, BigDecimal price, int durationMinutes) {
         Service service = new Service();
         service.setServiceName(serviceName);
         service.setPrice(price);
+        service.setDurationMinutes(durationMinutes);
         serviceRepository.save(service);
     }
 
-    // Редактирование услуги
     @PutMapping("/editService")
-    public String editService(@RequestParam int id, @RequestParam String serviceName, @RequestParam BigDecimal price) {
+    public String editService(@RequestParam int id, @RequestParam String serviceName, @RequestParam BigDecimal price, @RequestParam int durationMinutes) {
         Service service = serviceRepository.findById(id).orElse(null);
         if (service == null) {
             return "Услуга не найдена";
         }
         service.setServiceName(serviceName);
         service.setPrice(price);
+        service.setDurationMinutes(durationMinutes);
         serviceRepository.save(service);
         return "Услуга обновлена";
     }
 
-    // Удаление услуги
     @DeleteMapping("/deleteService")
     public String deleteService(@RequestParam int id) {
         serviceRepository.deleteById(id);
@@ -145,14 +143,12 @@ public class AdminController {
         barberAdminRepository.save(barberAdmin);
     }
 
-    // Настройка рабочих дней
     @PostMapping("/setWorkingDays")
     public String setWorkingDays(@RequestParam List<LocalDate> workingDays) {
         // Логика для настройки рабочих дней
         return "Рабочие дни установлены";
     }
 
-    // Публикация постов
     @PostMapping("/postAnnouncement")
     public String postAnnouncement(@RequestParam String message) {
         // Логика для публикации постов
@@ -160,14 +156,12 @@ public class AdminController {
         return "Объявление опубликовано";
     }
 
-    // Публикация постов с изображениями
     @PostMapping("/postPhoto")
     public String postPhoto(@RequestParam String caption, @RequestParam String photoUrl) {
         sendPhotoMessageToAll(caption, photoUrl);
         return "Фото опубликовано";
     }
 
-    // Публикация постов с голосовыми сообщениями
     @PostMapping("/postVoice")
     public String postVoice(@RequestParam String voiceUrl) {
         sendVoiceMessageToAll(voiceUrl);
@@ -205,7 +199,6 @@ public class AdminController {
         }
     }
 
-    // Обработка команд администратора через бота
     public void handleAdminCommands(long chatId, String messageText) {
         if (botController.lastAdminCommand != null) {
             switch (botController.lastAdminCommand) {
@@ -235,10 +228,10 @@ public class AdminController {
                     botController.sendMessage(chatId, "Введите ID барбера для удаления");
                     break;
                 case "/addService":
-                    botController.sendMessage(chatId, "Введите данные в формате: Название_Цена");
+                    botController.sendMessage(chatId, "Введите данные в формате: Название_Цена_Таймер");
                     break;
                 case "/editService":
-                    botController.sendMessage(chatId, "Введите данные в формате: ID_Название_Цена");
+                    botController.sendMessage(chatId, "Введите данные в формате: ID_Название_Цена_Таймер");
                     break;
                 case "/deleteService":
                     botController.sendMessage(chatId, "Введите ID услуги для удаления");
@@ -266,6 +259,10 @@ public class AdminController {
                     break;
                 case "/postVideoNote":
                     botController.sendMessage(chatId, "Пришлите видеосообщение для публикации");
+                    break;
+                case "/viewRequest":
+                    botController.sendMessage(chatId, "Просмотр поступающих заявок:");
+                    botController.showRequest(chatId);
                     break;
                 default:
                     botController.sendMessage(chatId, "Неизвестная команда администратора.");
@@ -301,6 +298,8 @@ public class AdminController {
                     .append(service.getServiceName())
                     .append(", Цена: ")
                     .append(service.getPrice())
+                    .append(", Таймер: ")
+                    .append(service.getDurationMinutes())
                     .append("\n");
         }
         return sb.toString();
@@ -336,45 +335,6 @@ public class AdminController {
                     .append("\n");
         }
         return sb.toString();
-    }
-
-    public void handleAdminInput(long chatId, String messageText) {
-        // Здесь нужно добавить логику обработки ввода для каждой команды администратора
-        if (messageText.startsWith("Имя_")) {
-            String[] parts = messageText.split("_");
-            if (parts.length == 4) {
-                String name = parts[0];
-                String phoneNumber = parts[1];
-                String specialty = parts[2];
-                double rating;
-                try {
-                    rating = Double.parseDouble(parts[3]);
-                } catch (NumberFormatException e) {
-                    botController.sendMessage(chatId, "Неверный формат рейтинга.");
-                    return;
-                }
-                addBarber(name, phoneNumber, specialty, rating);
-                botController.sendMessage(chatId, "Барбер добавлен.");
-            } else {
-                botController.sendMessage(chatId, "Неверный формат ввода.");
-            }
-        } else if (messageText.startsWith("Название_")) {
-            String[] parts = messageText.split("_");
-            if (parts.length == 2) {
-                String serviceName = parts[0];
-                BigDecimal price;
-                try {
-                    price = new BigDecimal(parts[1]);
-                } catch (NumberFormatException e) {
-                    botController.sendMessage(chatId, "Неверный формат цены.");
-                    return;
-                }
-                addService(serviceName, price);
-                botController.sendMessage(chatId, "Услуга добавлена.");
-            } else {
-                botController.sendMessage(chatId, "Неверный формат ввода.");
-            }
-        }
     }
 
     private void sendTextMessageToAll(String text) {
@@ -416,7 +376,7 @@ public class AdminController {
     }
 
     public void sendVideoNoteToAll(String fileId) {
-        List<Long> userIds = getAllUserIds(); // Метод получения всех chatId пользователей
+        List<Long> userIds = getAllUserIds();
         for (Long chatId : userIds) {
             SendVideoNote videoNote = new SendVideoNote();
             videoNote.setChatId(chatId.toString());
@@ -430,20 +390,8 @@ public class AdminController {
     }
 
     private List<Long> getAllUserIds() {
-        // Логика получения всех идентификаторов пользователей из базы данных
         return userRepository.findAll().stream().map(User::getChatId).collect(Collectors.toList());
     }
-
-//    private void sendMessage(Long chatId, String text) {
-//        SendMessage message = new SendMessage();
-//        message.setChatId(chatId.toString());
-//        message.setText(text);
-//        try {
-//            bot.execute(message);
-//        } catch (TelegramApiException e) {
-//            e.printStackTrace();
-//        }
-//    }
 
     @PostMapping("/makeAdmin")
     public String makeAdmin(@RequestParam Long chatId) {

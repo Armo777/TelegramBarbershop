@@ -1,12 +1,22 @@
 package com.example.telegrambarbershop.entity;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.util.Set;
 
 @Data
 @Entity
+@EqualsAndHashCode(exclude = {"barberAdmins", "reviews"})  // Исключаем ассоциации из equals и hashCode
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@ToString(exclude = "barberAdmins")
 public class Barber {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,16 +31,19 @@ public class Barber {
     private String phoneNumber;
 
     @Column(name = "Rating_f", nullable = false)
-    private Double Rating;
+    private Double rating;
 
-    @OneToMany(mappedBy = "barber", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "barber", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Set<BarberAdmin> barberAdmins;
 
-    public Barber(String name, String phoneNumber, String email, String address) {
+    @OneToMany(mappedBy = "barber", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JsonBackReference
+    private Set<Review> reviews;
+
+    public Barber(String name, String phoneNumber) {
         this.name = name;
         this.phoneNumber = phoneNumber;
-        this.Rating = Rating;
-        // Инициализация остальных полей при необходимости
+        this.rating = 0.0;
     }
 
     public Barber() {
@@ -49,6 +62,14 @@ public class Barber {
         return name;
     }
 
+    public String getSpecialty() {
+        return specialty;
+    }
+
+    public void setSpecialty(String specialty) {
+        this.specialty = specialty;
+    }
+
     public void setName(String name) {
         this.name = name;
     }
@@ -62,11 +83,18 @@ public class Barber {
     }
 
     public Double getRating() {
-        return Rating;
+        return rating;
     }
 
     public void setRating(Double rating) {
-        Rating = rating;
+        rating = rating;
+    }
+
+    public void updateRating() {
+        this.rating = reviews.stream()
+                .mapToDouble(Review::getRating)
+                .average()
+                .orElse(0.0);
     }
 }
 

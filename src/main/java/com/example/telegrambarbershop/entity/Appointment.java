@@ -1,12 +1,16 @@
 package com.example.telegrambarbershop.entity;
 
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
 @Data
 @Entity
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 public class Appointment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -15,16 +19,39 @@ public class Appointment {
     @Column(name = "appointmentDateTime_f", nullable = false)
     private LocalDateTime appointmentDateTime;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "barber_id", nullable = false)
     private Barber barber;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "service_id", nullable = false)
     private Service service;
 
     @Column(name = "name_f", nullable = false)
     private String name;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "user_id", nullable = false)
+    @NotNull
+    private User user;
+
+    private boolean reviewRequestSent = false;
+
+    public boolean isReviewRequestSent() {
+        return reviewRequestSent;
+    }
+
+    public void setReviewRequestSent(boolean reviewRequestSent) {
+        this.reviewRequestSent = reviewRequestSent;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 
     public Appointment(Integer id, LocalDateTime appointmentDateTime, Barber barber, Service service, String name) {
         this.id = id;

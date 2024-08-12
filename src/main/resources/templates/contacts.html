@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Контакты - Барбершоп</title>
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="../static/css/styles.css">
+  <style>
+    .map {
+      width: 100%;
+      height: 400px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+<header class="bg-dark text-white p-3">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="h1">Барбершоп</div>
+      <nav>
+        <a href="index.html" class="text-white mr-3">Главная</a>
+        <a href="about.html" class="text-white mr-3">О нас</a>
+        <a href="services.html" class="text-white mr-3">Услуги</a>
+        <a href="portfolio.html" class="text-white mr-3">Работы</a>
+        <a href="reviews.html" class="text-white mr-3">Отзывы</a>
+        <a href="contacts.html" class="text-white">Контакты</a>
+      </nav>
+    </div>
+  </div>
+</header>
+<main>
+  <section class="py-5">
+    <div class="container">
+      <h2 class="mb-4">Контакты</h2>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <h3>Адрес</h3>
+          <p>г. Ростов-на-Дону, ул. Максима Горького, 201</p>
+        </div>
+        <div class="col-md-4 mb-3">
+          <h3>Телефон</h3>
+          <p>+7 (993) 458-05-24</p>
+        </div>
+        <div class="col-md-4 mb-3">
+          <h3>Email</h3>
+          <p>bakautbarbershop@yandex.ru</p>
+        </div>
+      </div>
+      <div class="map" id="map"></div>
+    </div>
+  </section>
+</main>
+<footer class="bg-dark text-white text-center py-3">
+  <p>Барбершоп &copy; 2024</p>
+</footer>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=aa161807-df3f-47a4-b8b4-4abe4ffb6b9b"></script>
+<script>
+  ymaps.ready(init);
+  function init(){
+    var map = new ymaps.Map("map", {
+      center: [47.23135, 39.72328], // Координаты г. Ростов-на-Дону, ул. Максима Горького, 201
+      zoom: 15
+    });
+    var placemark = new ymaps.Placemark([47.228877, 39.723601], {
+      hintContent: 'Барбершоп',
+      balloonContent: 'г. Ростов-на-Дону, ул. Максима Горького, 201'
+    });
+    map.geoObjects.add(placemark);
+  }
+</script>
+</body>
+</html>
+

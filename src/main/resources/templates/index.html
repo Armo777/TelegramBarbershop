@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Барбершоп</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<header class="bg-dark text-white p-3">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="h1">Барбершоп</div>
+            <nav class="nav">
+                <a href="index.html" class="text-white mr-3">Главная</a>
+                <a href="about.html" class="text-white mr-3">О нас</a>
+                <a href="services.html" class="text-white mr-3">Услуги</a>
+                <a href="portfolio.html" class="text-white mr-3">Работы</a>
+                <a href="reviews.html" class="text-white mr-3">Отзывы</a>
+                <a href="contacts.html" class="text-white">Контакты</a>
+            </nav>
+        </div>
+    </div>
+</header>
+<main>
+    <section class="banner text-center text-white" style="background-image: url('/static/img/123.jpg'); padding: 100px 0;">
+        <div class="container">
+            <h1 class="display-4">Добро пожаловать в Барбершоп!</h1>
+            <a href="https://t.me/crop_barber_bot" class="btn btn-primary btn-lg mt-3" target="_blank">Записаться</a>
+        </div>
+    </section>
+    <!-- Остальной контент главной страницы -->
+
+    <!-- Форма контактов -->
+    <section class="contact-section bg-dark text-white py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <img src="/static/img/1234.png" alt="Контакт" class="img-fluid rounded">
+                </div>
+                <div class="col-md-6">
+                    <h3 class="mb-4">Вы всегда можете связаться с нами</h3>
+                    <p>Оставляйте заявку и наш менеджер свяжется с вами в течении часа</p>
+                    <form id="contactForm">
+                        <div class="form-group">
+                            <input type="text" class="form-control" name="name" placeholder="Ваше Имя" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="tel" class="form-control" name="phone" placeholder="+7" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Заказать услугу</button>
+                        <p class="mt-2">*Нажимая на кнопку, Вы соглашаетесь на обработку персональных данных</p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+<footer class="bg-dark text-white text-center py-3">
+    <p>Барбершоп &copy; 2024</p>
+</footer>
+
+<!-- Модальное окно -->
+<div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="successModalLabel">Заявка отправлена</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Ваша заявка успешно принята. В ближайшее время вам позвонят.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Скрипты -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    document.getElementById('contactForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        var name = this.name.value.trim();
+        var phone = this.phone.value.trim();
+
+        if (!name || !phone) {
+            alert('Пожалуйста, заполните все поля.');
+            return;
+        }
+
+        var formData = new FormData(this);
+
+        fetch('http://localhost:8085/api/requests', {
+            method: 'POST',
+            body: new URLSearchParams(formData)
+        })
+            .then(response => {
+                if (response.ok) {
+                    $('#successModal').modal('show');
+                    this.reset();
+                } else {
+                    alert('Произошла ошибка. Попробуйте еще раз.');
+                }
+            })
+            .catch(error => {
+                alert('Произошла ошибка. Попробуйте еще раз.');
+            });
+    });
+</script>
+</body>
+</html>
+
+
+
+
+
