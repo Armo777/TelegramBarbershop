@@ -9,6 +9,7 @@ import com.example.telegrambarbershop.repositories.BarberRepository;
 import com.example.telegrambarbershop.repositories.ServiceRepository;
 import com.example.telegrambarbershop.repositories.UserRepository;
 import com.example.telegrambarbershop.service.AppointmentService;
+import com.example.telegrambarbershop.service.WorkingDayService;
 import jakarta.transaction.Transactional;
 import org.hibernate.Hibernate;
 import org.slf4j.ILoggerFactory;
@@ -46,6 +47,9 @@ public class AppointmentController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private WorkingDayService workingDayService;
+
     @GetMapping("/availableTimeSlots")
     public Map<LocalDate, List<String>> getAvailableTimeSlots(
             @RequestParam int barberId,
@@ -59,12 +63,18 @@ public class AppointmentController {
         int serviceDuration = service.getDurationMinutes();  // Получаем длительность выполнения услуги
         int breakDuration = 5;  // Перерыв в минутах
 
+        List<LocalDate> workingDays = workingDayService.getAllWorkingDays();
+
         LocalDate startDate = LocalDate.now().plusDays(0); // Начинаем с завтрашнего дня
         LocalDate endDate = startDate.plusMonths(1); // До одного месяца от завтрашнего дня
         List<Appointment> appointments = appointmentRepository.findByBarberId(barberId);
         Map<LocalDate, List<String>> availableTimeSlotsMap = new HashMap<>();
 
         for (LocalDate currentDate = startDate; currentDate.isBefore(endDate); currentDate = currentDate.plusDays(1)) {
+            if (!workingDays.contains(currentDate)) {
+                continue;
+            }
+
             LocalDateTime startTime = LocalDateTime.of(currentDate, LocalTime.of(9, 0));
             LocalDateTime endTime = LocalDateTime.of(currentDate, LocalTime.of(23, 0));
             List<String> availableTimeSlots = new ArrayList<>();

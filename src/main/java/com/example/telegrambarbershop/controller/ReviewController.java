@@ -21,34 +21,8 @@ public class ReviewController {
     @Autowired
     private ReviewRepository reviewRepository;
 
-//    @PostMapping("/submit")
-//    public ResponseEntity<String> submitReview(
-//            @RequestParam Integer barberId,
-//            @RequestParam Double rating,
-//            @RequestParam String comment) {
-//        reviewService.handleReview(barberId, rating, comment);
-//        return ResponseEntity.ok("Отзыв успешно добавлен");
-//    }
-
     @GetMapping("/api/reviews")
     public List<ReviewDTO> getReviews() {
         return reviewService.getAllReviews();
     }
-
-//    @GetMapping("/api/reviews")
-//    @CrossOrigin(origins = "http://localhost:63342")
-//    public List<Review> getReviews() {
-//        List<Review> reviews = reviewRepository.findAll();
-//        for (Review review : reviews) {
-//            System.out.println("Review ID: " + review.getId() + ", Barber: " + (review.getBarber() != null ? review.getBarber().getName() : "null"));
-//        }
-//        return reviews;
-//    }
-
-//    @GetMapping("/reviews")
-//    @ResponseBody
-//    @CrossOrigin(origins = "http://localhost:63342")
-//    public List<Review> getReviews() {
-//        return reviewRepository.findAll();
-//    }
 }

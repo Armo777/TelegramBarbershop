@@ -1,5 +1,6 @@
 package com.example.telegrambarbershop.service;
 
+import com.example.telegrambarbershop.controller.TelegramBotController;
 import com.example.telegrambarbershop.entity.*;
 import com.example.telegrambarbershop.repositories.AppointmentRepository;
 import com.example.telegrambarbershop.repositories.BarberRepository;
@@ -13,10 +14,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,6 +34,11 @@ public class ReviewService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private TelegramBotController telegramBotController;
+
+
 
     // Метод для отправки запросов на отзыв
     @Transactional
@@ -138,6 +141,24 @@ public class ReviewService {
                     review.getAppointment().getName()  // Имя пользователя из Appointment
             );
         }).collect(Collectors.toList());
+    }
+
+    //boolean isReviewHandled = false;
+
+    public boolean handleUserReview(long chatId, String messageText, Map<Long, UserRating> userRatingMap) {
+        if (userRatingMap.containsKey(chatId)) {
+            UserRating userRating = userRatingMap.get(chatId);
+            if ("/skip".equals(messageText)) {
+                handleReview(userRating.getRating(), "", userRating.getAppointmentId());
+                userRatingMap.remove(chatId);
+                return true;
+            } else {
+                handleReview(userRating.getRating(), messageText, userRating.getAppointmentId());
+                userRatingMap.remove(chatId);
+                return true;
+            }
+        }
+        return false;
     }
 }
 

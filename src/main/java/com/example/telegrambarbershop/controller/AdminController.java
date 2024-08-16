@@ -52,6 +52,9 @@ public class AdminController {
     @Autowired
     private AppointmentService appointmentService;
 
+    @Autowired
+    private WorkingDayRepository workingDayRepository;
+
     @GetMapping("/viewBarbers")
     public List<Barber> viewBarbers() {
         return barberRepository.findAll();
@@ -70,6 +73,11 @@ public class AdminController {
     @GetMapping("/viewBarberAdmins")
     public List<BarberAdmin> viewBarberAdmins() {
         return barberAdminRepository.findAll();
+    }
+
+    @GetMapping("/viewWorkingDays")
+    public List<WorkingDay> viewWorkingDays() {
+        return workingDayRepository.findAll();
     }
 
     @PostMapping("/addBarber")
@@ -128,6 +136,12 @@ public class AdminController {
     public String deleteService(@RequestParam int id) {
         serviceRepository.deleteById(id);
         return "Услуга удалена";
+    }
+
+    @DeleteMapping("/deleteWorkingDays")
+    public String deleteWorkingDays(@RequestParam int id) {
+        workingDayRepository.deleteById(id);
+        return "Дата удалена";
     }
 
     @PutMapping("/addBarberAdmin")
@@ -218,6 +232,13 @@ public class AdminController {
                     List<BarberAdmin> barberAdmins = viewBarberAdmins();
                     botController.sendMessage(chatId, formatBarberAdmins(barberAdmins));
                     break;
+                case "/viewWorkingDays":
+                    List<WorkingDay> workingDays = viewWorkingDays();
+                    botController.sendMessage(chatId, formatWorkingDay(workingDays));
+                    break;
+                case "/setWorkingDays":
+                    botController.showCalendarForWorkingDays((int) chatId);
+                    break;
                 case "/addBarber":
                     botController.sendMessage(chatId, "Введите данные в формате: Имя_НомерТелефона_Специальность_Рейтинг");
                     break;
@@ -245,9 +266,9 @@ public class AdminController {
                 case "/deleteBarberAdmin":
                     botController.sendMessage(chatId, "Введите ID администратора сотрудника для удаления");
                     break;
-                case "/setWorkingDays":
-                    botController.sendMessage(chatId, "Введите данные в формате: ID_РабочиеДни");
-                    break;
+//                case "/setWorkingDays":
+//                    botController.sendMessage(chatId, "Введите данные в формате: ID_РабочиеДни");
+//                    break;
                 case "/postAnnouncement":
                     botController.sendMessage(chatId, "Введите текст объявления");
                     break;
@@ -263,6 +284,9 @@ public class AdminController {
                 case "/viewRequest":
                     botController.sendMessage(chatId, "Просмотр поступающих заявок:");
                     botController.showRequest(chatId);
+                    break;
+                case "/deleteWorkingDays":
+                    botController.sendMessage(chatId, "Введите ID даты для удаления");
                     break;
                 default:
                     botController.sendMessage(chatId, "Неизвестная команда администратора.");
@@ -332,6 +356,17 @@ public class AdminController {
                     .append(barberAdmin.getPassword())
                     .append(", Барбер: ")
                     .append(barberAdmin.getBarber().getName())
+                    .append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String formatWorkingDay(List<WorkingDay> workingDays) {
+        StringBuilder sb = new StringBuilder("Список список рабочих дней:\n");
+        for (WorkingDay workingDay : workingDays) {
+            sb.append(workingDay.getId())
+                    .append(": Дата: ")
+                    .append(workingDay.getDate())
                     .append("\n");
         }
         return sb.toString();

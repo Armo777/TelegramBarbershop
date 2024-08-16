@@ -7,6 +7,4 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface BarberAdminRepository extends JpaRepository<BarberAdmin, Long> {
     BarberAdmin findByUsername(String username);
-
-
 }
