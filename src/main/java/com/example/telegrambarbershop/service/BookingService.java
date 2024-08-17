@@ -32,7 +32,6 @@ public class BookingService {
         List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
 
         List<LocalDate> workingDays = workingDayService.getAllWorkingDays();
-        //List<LocalDate> selectedDays = new ArrayList<>();
 
         for (int i = 0; i < 30; i++) {
             LocalDate day = LocalDate.now().plusDays(i);
@@ -51,7 +50,6 @@ public class BookingService {
                         "day_" + day.toString() + "_" + barberId + "_" + serviceId;
 
                 button.setText(dayLabel);
-                //button.setCallbackData("day_" + day.toString() + "_" + barberId + "_" + serviceId);
                 button.setCallbackData(callbackData);
                 rowInline.add(button);
                 rowsInline.add(rowInline);

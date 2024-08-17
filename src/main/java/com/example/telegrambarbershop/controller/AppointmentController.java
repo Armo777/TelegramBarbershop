@@ -61,11 +61,11 @@ public class AppointmentController {
         }
 
         int serviceDuration = service.getDurationMinutes();  // Получаем длительность выполнения услуги
-        int breakDuration = 5;  // Перерыв в минутах
+        int breakDuration = 10;  // Перерыв в минутах
 
         List<LocalDate> workingDays = workingDayService.getAllWorkingDays();
 
-        LocalDate startDate = LocalDate.now().plusDays(0); // Начинаем с завтрашнего дня
+        LocalDate startDate = LocalDate.now().plusDays(1); // Начинаем с завтрашнего дня
         LocalDate endDate = startDate.plusMonths(1); // До одного месяца от завтрашнего дня
         List<Appointment> appointments = appointmentRepository.findByBarberId(barberId);
         Map<LocalDate, List<String>> availableTimeSlotsMap = new HashMap<>();
@@ -76,7 +76,7 @@ public class AppointmentController {
             }
 
             LocalDateTime startTime = LocalDateTime.of(currentDate, LocalTime.of(9, 0));
-            LocalDateTime endTime = LocalDateTime.of(currentDate, LocalTime.of(23, 0));
+            LocalDateTime endTime = LocalDateTime.of(currentDate, LocalTime.of(18, 0));
             List<String> availableTimeSlots = new ArrayList<>();
             LocalDateTime currentSlot = startTime;
 
@@ -113,43 +113,6 @@ public class AppointmentController {
         return availableTimeSlotsMap;
     }
 
-    public List<String> getAvailableTimeSlotsForDay(int barberId, LocalDate date, int serviceDuration) {
-        LocalDateTime startTime = LocalDateTime.of(date, LocalTime.of(9, 0));
-        LocalDateTime endTime = LocalDateTime.of(date, LocalTime.of(18, 0));
-        int breakDuration = 5;  // Перерыв в минутах
-
-        List<Appointment> appointments = appointmentRepository.findByBarberIdAndAppointmentDateTimeBetween(Long.valueOf(barberId), startTime, endTime);
-
-        List<String> availableTimeSlots = new ArrayList<>();
-        LocalDateTime currentSlot = startTime;
-        while (currentSlot.isBefore(endTime)) {
-            boolean isSlotAvailable = true;
-            for (Appointment appointment : appointments) {
-                LocalDateTime appointmentEnd = appointment.getAppointmentDateTime()
-                        .plusMinutes(appointment.getService().getDurationMinutes())
-                        .plusMinutes(breakDuration);
-
-                if ((currentSlot.isEqual(appointment.getAppointmentDateTime()) || currentSlot.isBefore(appointmentEnd)) &&
-                        currentSlot.plusMinutes(serviceDuration + breakDuration).isAfter(appointment.getAppointmentDateTime())) {
-                    isSlotAvailable = false;
-                    break;
-                }
-            }
-            if (isSlotAvailable) {
-                availableTimeSlots.add(formatDateTime(currentSlot));
-            }
-            currentSlot = currentSlot.plusMinutes(serviceDuration + breakDuration);
-        }
-
-        return availableTimeSlots;
-    }
-
-    private List<Appointment> getAppointmentsForDay(Long barberId, LocalDate day) {
-        LocalDateTime startOfDay = day.atStartOfDay();
-        LocalDateTime endOfDay = day.atTime(LocalTime.MAX);
-        return appointmentRepository.findByBarberIdAndAppointmentDateTimeBetween(barberId, startOfDay, endOfDay);
-    }
-
     private String formatDateTime(LocalDateTime dateTime) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         return dateTime.format(formatter);
@@ -172,13 +135,11 @@ public class AppointmentController {
         // Получаем информацию о барбере и услуге
         Barber barber = barberRepository.findById(barberId).orElse(null);
         Service service = serviceRepository.findById(serviceId).orElse(null);
-        //User user = userRepository.findById(userId).orElse(null);
 
         logger.debug("Результаты поиска: barber={}, service={}, user={}", barber, service, user);
 
-        // Проверяем, найдены ли барбер, услуга и пользователь
         if (barber == null || service == null) {
-            return false; // Возвращаем false, если барбер, услуга или пользователь не найдены
+            return false;
         }
 
         Hibernate.initialize(barber.getBarberAdmins());
@@ -191,15 +152,11 @@ public class AppointmentController {
         appointment.setService(service);
         appointment.setUser(user);
         appointment.setName(name);
-        // Сохраняем запись в репозитории
         appointmentRepository.save(appointment);
 
         logger.debug("Запись на прием успешно создана: {}", appointment);
 
-        //String answer = "Ваша запись создана, будем вас ждать!";
-        //telegramBotController.sendMessage(telegramBotController.update.getCallbackQuery(), answer);
-
-        return true; // Возвращаем true, если запись на прием успешно создана
+        return true;
     }
 }
 

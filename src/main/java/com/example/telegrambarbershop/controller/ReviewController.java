@@ -18,9 +18,6 @@ public class ReviewController {
     @Autowired
     private ReviewService reviewService;
 
-    @Autowired
-    private ReviewRepository reviewRepository;
-
     @GetMapping("/api/reviews")
     public List<ReviewDTO> getReviews() {
         return reviewService.getAllReviews();

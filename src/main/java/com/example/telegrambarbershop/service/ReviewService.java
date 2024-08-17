@@ -32,17 +32,9 @@ public class ReviewService {
     @Autowired
     private TelegramNotificationService telegramNotificationService;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private TelegramBotController telegramBotController;
-
-
-
     // Метод для отправки запросов на отзыв
     @Transactional
-    @Scheduled(fixedRate = 60000)  // Проверяем каждые 60 секунд
+    @Scheduled(fixedRate = 600000)  // Проверяем каждые 600 секунд
     public void sendReviewRequests() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime notificationTime = now.minusMinutes(1);
@@ -78,33 +70,9 @@ public class ReviewService {
         telegramNotificationService.sendMessageWithKeyboard(chatId, message, inlineKeyboardMarkup);
     }
 
-    // Метод для обработки ответа пользователя через callback
-    public void handleReviewResponse(String callbackData) {
-        String[] parts = callbackData.split("_");
-        if (parts.length < 3 || !parts[0].equals("rating")) {
-            return;  // Неверный формат данных
-        }
-
-        int rating = Integer.parseInt(parts[1]);
-        Integer appointmentId = Integer.valueOf(parts[2]);
-
-        Appointment appointment = appointmentRepository.findById(Math.toIntExact(appointmentId)).orElse(null);
-        if (appointment == null) {
-            return;
-        }
-
-        Integer barberId = appointment.getBarber().getId();
-
-        handleReview((double) rating, "", appointmentId);
-
-        // Подтверждение пользователю
-        telegramNotificationService.sendReviewConfirmation(appointment.getUser().getChatId(), "Спасибо за ваш отзыв!");
-    }
-
     // Метод для обработки отзыва
     @Transactional
     public void handleReview(Double rating, String comment, Integer appointmentId) {
-        //Barber barber = barberRepository.findById(barberId).orElse(null);
         Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
         if (appointment == null) {
             return;
@@ -141,24 +109,6 @@ public class ReviewService {
                     review.getAppointment().getName()  // Имя пользователя из Appointment
             );
         }).collect(Collectors.toList());
-    }
-
-    //boolean isReviewHandled = false;
-
-    public boolean handleUserReview(long chatId, String messageText, Map<Long, UserRating> userRatingMap) {
-        if (userRatingMap.containsKey(chatId)) {
-            UserRating userRating = userRatingMap.get(chatId);
-            if ("/skip".equals(messageText)) {
-                handleReview(userRating.getRating(), "", userRating.getAppointmentId());
-                userRatingMap.remove(chatId);
-                return true;
-            } else {
-                handleReview(userRating.getRating(), messageText, userRating.getAppointmentId());
-                userRatingMap.remove(chatId);
-                return true;
-            }
-        }
-        return false;
     }
 }
 

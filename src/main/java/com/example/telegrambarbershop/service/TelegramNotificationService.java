@@ -26,17 +26,4 @@ public class TelegramNotificationService {
             e.printStackTrace();
         }
     }
-
-    // Подтверждение пользователю после получения отзыва
-    public void sendReviewConfirmation(Long chatId, String message) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(String.valueOf(chatId));
-        sendMessage.setText(message);
-
-        try {
-            telegramBotController.execute(sendMessage);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-    }
 }

@@ -44,9 +44,6 @@ public class TelegramBotController extends TelegramLongPollingBot {
     private BotConfig config;
 
     @Autowired
-    private BarberAdminRepository barberAdminRepository;
-
-    @Autowired
     private BarberRepository barberRepository;
 
     @Autowired
@@ -63,12 +60,6 @@ public class TelegramBotController extends TelegramLongPollingBot {
 
     @Autowired
     private AdminController adminController;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private MainAdminRepository mainAdminRepository;
 
     @Autowired
     private RequestRepository requestRepository;
@@ -99,17 +90,12 @@ public class TelegramBotController extends TelegramLongPollingBot {
 
     private final AbsSender bot;
 
-    private BarberService barberService;
-    private List<Barber> barbers; // список барберов
-
     private boolean isAuthenticated = false;
     public String lastAdminCommand = null;
 
     private long adminChatId = -1;
 
     private final Map<Long, UserRating> userRatingMap = new ConcurrentHashMap<>();
-
-    private ReviewSessionManager sessionManager = new ReviewSessionManager();
 
     private Map<Integer, UserReviewSession> userReviewSessionMap = new HashMap<>();
 
@@ -188,9 +174,6 @@ public class TelegramBotController extends TelegramLongPollingBot {
                     sendMessage(chatId, "Спасибо за ваш отзыв!");
                     isReviewHandled = true;
                 }
-
-                // После обработки отзыва, оставляем запись в Map, но обновляем ее (например, можем сбросить комментарий)
-                // userRatingMap.put(chatId, updatedUserRating); // если требуется обновление
             }
 
             if (!isReviewHandled && messageText != null && messageText.startsWith("/")) {
@@ -430,7 +413,6 @@ public class TelegramBotController extends TelegramLongPollingBot {
                     updatedBarberAdmin.setUsername(updateData[0]);
                     updatedBarberAdmin.setPassword(updateData[1]);
                     Long updateId = Long.valueOf(updateData[2]);
-                    // Предположим, что здесь используется ID барбера, которого нужно назначить администратором
                     updatedBarberAdmin.setBarber(barberRepository.findById((int) Long.parseLong(updateData[2])).orElse(null));
                     adminController.updateBarberAdmin(updateId, updatedBarberAdmin);
                     sendMessage(chatId, "Администратор барбера успешно обновлен.");
@@ -575,33 +557,6 @@ public class TelegramBotController extends TelegramLongPollingBot {
         }
     }
 
-    private boolean isAdmin(long chatId) {
-        User user = userRepository.findByChatId(chatId);
-        return user != null && user.isAdmin();
-    }
-
-    private void createMonthlyAppointments(Long chatId, Integer barberId) {
-        List<Appointment> appointments = appointmentService.createMonthlyAppointments(Long.valueOf(barberId));
-        sendMessage(chatId, "Создано " + appointments.size() + " записей на месяц вперед.");
-    }
-
-    private void getAppointmentsForDay(Long chatId, Long barberId, String day) {
-        try {
-            LocalDateTime dateTime = LocalDateTime.parse(day + " 00:00:00");
-            List<Appointment> appointments = appointmentService.getAppointmentsForDay(barberId, dateTime);
-            if (appointments.isEmpty()) {
-                sendMessage(chatId, "Записей на " + day + " не найдено.");
-            } else {
-                String appointmentsList = appointments.stream()
-                        .map(a -> a.getAppointmentDateTime().toString())
-                        .collect(Collectors.joining("\n"));
-                sendMessage(chatId, "Записи на " + day + ":\n" + appointmentsList);
-            }
-        } catch (Exception e) {
-            sendMessage(chatId, "Неверный формат даты. Используйте: YYYY-MM-DD");
-        }
-    }
-
     public void sendMessage(Long chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
@@ -741,24 +696,6 @@ public class TelegramBotController extends TelegramLongPollingBot {
             } catch (DateTimeParseException e) {
                 sendMessage(chatId, "Ошибка при обработке даты: " + dateStr);
             }
-//            String[] dataParts = callbackData.split("_");
-//            if (dataParts.length != 3) {
-//                sendMessage(chatId, "Ошибка обработки данных дня.");
-//                return;
-//            }
-//            LocalDate selectedDay = LocalDate.parse(dataParts[2]);
-//
-//            List<LocalDate> workingDays = workingDayService.getAllWorkingDays();
-//
-//            // Добавляем или удаляем день из базы данных
-//            if (workingDays.contains(selectedDay)) {
-//                workingDayService.deleteWorkingDay(selectedDay); // удаляем день
-//            } else {
-//                workingDayService.saveWorkingDay(selectedDay); // добавляем день
-//            }
-//
-//            // Перерисовываем календарь с обновленным выбором
-//            bookingService.showAvailableDays(chatId, null, null);
         } else if (callbackData.startsWith("confirm_days")) {
             //Integer barberId = extractBarberIdFromCallbackData(callbackData);
             if (globalWorkDays.isEmpty()) {
@@ -772,7 +709,6 @@ public class TelegramBotController extends TelegramLongPollingBot {
     }
 
     private void toggleWorkDay(LocalDate date) {
-        // Ваша логика для переключения дня работы
         if (globalWorkDays.contains(date)) {
             globalWorkDays.remove(date);
         } else {
@@ -934,14 +870,7 @@ public class TelegramBotController extends TelegramLongPollingBot {
         return adminService.isMainAdminCredentials(username, password);
     }
 
-    private boolean isMainAdmin(long chatId) {
-        return adminService.isMainAdmin(chatId);
-    }
-
     public void showCalendarForWorkingDays(Integer chatId) {
-        // Генерация и отправка сообщения с календарем
-        //long chatId = adminChatId;  // метод получения чата главного администратора
-
         // Сразу покажем календарь для текущего месяца
         SendMessage message = new SendMessage();
         message.setChatId(Long.valueOf(chatId));
@@ -949,17 +878,6 @@ public class TelegramBotController extends TelegramLongPollingBot {
         message.setReplyMarkup(generateCalendarMarkup(LocalDate.now()));  // Создание клавиатуры с датами
         sendMessage(message);
     }
-
-//    private void updateCalendarMessage(long chatId, LocalDate month, Integer barberId) {
-//        InlineKeyboardMarkup markupInline = generateCalendarMarkup(month, barberId);
-//        SendMessage message = new SendMessage(String.valueOf(chatId), "Выберите рабочие дни:");
-//        message.setReplyMarkup(markupInline);
-//        try {
-//            execute(message);
-//        } catch (TelegramApiException e) {
-//            log.error("Произошла ошибка при отправке календаря: " + e.getMessage());
-//        }
-//    }
 
     private InlineKeyboardMarkup generateCalendarMarkup(LocalDate currentDate) {
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
@@ -1023,63 +941,17 @@ public class TelegramBotController extends TelegramLongPollingBot {
         return new InlineKeyboardMarkup(rows);
     }
 
-    private boolean isSelectedDay(Integer barberId, LocalDate day) {
-        Set<LocalDate> selectedDays = selectedWorkDaysMap.getOrDefault(barberId, new HashSet<>());
-        return selectedDays.contains(day);
-    }
-
-    private void toggleSelectedWorkDay(LocalDate date) {
-//        Set<LocalDate> selectedDays = selectedWorkDaysMap.getOrDefault(barberId, new HashSet<>());
-//        if (selectedDays.contains(day)) {
-//            selectedDays.remove(day);
-//        } else {
-//            selectedDays.add(day);
-//        }
-//        selectedWorkDaysMap.put(barberId, selectedDays);
-        if (globalWorkDays.contains(date)) {
-            globalWorkDays.remove(date);
-        } else {
-            globalWorkDays.add(date);
-        }
-    }
-
     private void confirmSelectedWorkDays(long chatId) {
-//        Set<LocalDate> selectedDays = selectedWorkDaysMap.get(barberId);
-//        workingDayService.setWorkingDaysForBarber(barberId, new ArrayList<>(selectedDays));
-//        sendMessage(chatId, "Рабочие дни установлены.");
-//        selectedWorkDaysMap.remove(barberId);  // Очищаем временные данные
         if (globalWorkDays.isEmpty()) {
             sendMessage(chatId, "Нет выбранных рабочих дней для подтверждения.");
             return;
         }
 
-        // Предположим, у вас есть метод, который возвращает список всех барберов
-//        List<Barber> barbers = barberService.getAllBarbers();
-//        for (Barber barber : barbers) {
-//            workingDayService.setWorkingDaysForBarber(barber.getId(), new ArrayList<>(globalWorkDays));
-//        }
-        // Сохраняем рабочие дни в базу данных
         for (LocalDate date : globalWorkDays) {
             workingDayService.saveWorkingDay(date);
         }
 
         sendMessage(chatId, "Рабочие дни установлены для всех барберов.");
         globalWorkDays.clear();
-    }
-
-    private LocalDate extractDateFromCallbackData(String callbackData) {
-        // Извлекаем дату из callback данных
-        String[] parts = callbackData.split("_");
-        return LocalDate.parse(parts[2]);
-    }
-
-    private LocalDate extractMonthFromCallbackData(String callbackData) {
-        LocalDate date = extractDateFromCallbackData(callbackData);
-        return date.withDayOfMonth(1);  // Возвращаем первый день месяца
-    }
-
-    private Integer extractBarberIdFromCallbackData(String callbackData) {
-        String[] parts = callbackData.split("_");
-        return Integer.valueOf(parts[parts.length - 1]);
     }
 }

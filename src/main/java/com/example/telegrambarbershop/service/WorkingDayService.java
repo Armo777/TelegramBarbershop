@@ -28,11 +28,4 @@ public class WorkingDayService {
                 .map(WorkingDay::getDate)
                 .collect(Collectors.toList());
     }
-
-    public void deleteWorkingDay(LocalDate date) {
-        WorkingDay workingDay = workingDayRepository.findByDate(date);
-        if (workingDay != null) {
-            workingDayRepository.delete(workingDay);
-        }
-    }
 }

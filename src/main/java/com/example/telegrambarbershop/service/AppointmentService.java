@@ -35,32 +35,6 @@ public class AppointmentService {
         this.telegramBotController = telegramBotController;
     }
 
-    public List<Appointment> createMonthlyAppointments(Long barberId) {
-        Barber barber = barberRepository.findById(barberId.intValue()).orElseThrow(() -> new IllegalArgumentException("Недопустимый ID барбера"));
-        com.example.telegrambarbershop.entity.Service defaultService = serviceRepository.findById(1).orElseThrow(() -> new IllegalArgumentException("Invalid service ID"));
-        List<Appointment> appointments = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
-
-        for (int day = 0; day < 30; day++) {
-            LocalDateTime date = now.plusDays(day).with(LocalTime.of(9, 0));
-            for (int hour = 9; hour < 23; hour++) {
-                LocalDateTime appointmentTime = date.withHour(hour);
-                Appointment appointment = new Appointment(null, appointmentTime, barber, defaultService, "Пользователь по умолчанию");
-                appointments.add(appointmentRepository.save(appointment));
-            }
-        }
-        return appointments;
-    }
-
-    @Transactional
-    public List<Appointment> getAppointmentsForDay(Long barberId, LocalDateTime day) {
-        LocalDateTime startOfDay = day.with(LocalTime.MIN);
-        LocalDateTime endOfDay = day.with(LocalTime.MAX);
-        List<Appointment> appointments = appointmentRepository.findByBarberIdAndAppointmentDateTimeBetween(barberId, startOfDay, endOfDay);
-        appointments.forEach(appointment -> Hibernate.initialize(appointment.getService()));
-        return appointments;
-    }
-
     @Transactional(readOnly = true)
     public List<Appointment> getAllAppointmentsWithDetails() {
         List<Appointment> appointments = appointmentRepository.findAll();
@@ -90,30 +64,7 @@ public class AppointmentService {
         telegramBotController.sendMessage(chatId, confirmationMessage);
     }
 
-    public Appointment createAppointment(Appointment appointment) {
-        // Логика создания записи и сохранения в репозитории
-        return appointmentRepository.save(appointment);
-    }
-
-    public List<Appointment> getAppointmentsByBarber(Long barberId) {
-        // Логика получения записей по ID барбера
-        // appointmentRepository.findByBarberId(barberId);
-        return appointmentRepository.findAll(); // Пример
-    }
-
     public List<Appointment> getAppointmentsForBarber(Long barberId) {
         return appointmentRepository.findByBarberId(barberId);
-    }
-
-    public String formatAppointmentsForBarber(List<Appointment> appointments) {
-        StringBuilder messageText = new StringBuilder();
-        messageText.append("Список записей:\n");
-
-        for (Appointment appointment : appointments) {
-            messageText.append("Дата и время: ").append(appointment.getAppointmentDateTime().toString()).append("\n");
-            messageText.append("Услуга: ").append(appointment.getService().getServiceName()).append("\n");
-            messageText.append("Имя клиента: ").append(appointment.getName()).append("\n\n");
-        }
-        return messageText.toString();
     }
 }

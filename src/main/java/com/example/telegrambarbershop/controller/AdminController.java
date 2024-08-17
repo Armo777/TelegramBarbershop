@@ -44,12 +44,6 @@ public class AdminController {
     private BarberAdminRepository barberAdminRepository;
 
     @Autowired
-    private AppointmentRepository appointmentRepository;
-
-    @Autowired
-    private MainAdminRepository mainAdminRepository;
-
-    @Autowired
     private AppointmentService appointmentService;
 
     @Autowired
